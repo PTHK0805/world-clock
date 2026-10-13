@@ -14,6 +14,7 @@ interface TitleBarProps {
   themeMode: ThemeMode;
   resolvedTheme: ResolvedTheme;
   infoActive: boolean;
+  updateAvailable: boolean;
   onTogglePin: () => void;
   onCompact: () => void;
   onCycleTheme: () => void;
@@ -26,6 +27,7 @@ export function TitleBar({
   themeMode,
   resolvedTheme,
   infoActive,
+  updateAvailable,
   onTogglePin,
   onCompact,
   onCycleTheme,
@@ -40,9 +42,9 @@ export function TitleBar({
       <div className="titlebar__actions">
         <button
           type="button"
-          className={`icon-btn${infoActive ? " icon-btn--active" : ""}`}
+          className={`icon-btn${infoActive ? " icon-btn--active" : ""}${updateAvailable ? " icon-btn--badge" : ""}`}
           onClick={onInfo}
-          title="Developer info"
+          title={updateAvailable ? "Developer info — update available" : "Developer info"}
           aria-pressed={infoActive}
         >
           <InfoIcon />

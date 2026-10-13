@@ -208,6 +208,23 @@ input {
   border-radius: 7px;
 }
 
+/* update-available dot on the info button */
+.icon-btn--badge {
+  position: relative;
+}
+
+.icon-btn--badge::after {
+  content: "";
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--accent);
+  box-shadow: 0 0 0 2px var(--bg-top);
+}
+
 /* ---------- hero clock ---------- */
 
 .hero {

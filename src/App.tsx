@@ -12,7 +12,7 @@ import { useResolvedTheme, nextThemeMode } from "./hooks/useTheme";
 import { useUpdater } from "./hooks/useUpdater";
 import { saveSettings } from "./lib/storage";
 import { localZone } from "./lib/timezones";
-import { closeWidget, currentPosition, moveTo, resizeToContent, setPinned } from "./lib/window";
+import { closeWidget, currentPosition, resizeToContent, restorePosition, setPinned } from "./lib/window";
 
 type PickerMode = "list" | "primary" | "about";
 
@@ -34,8 +34,7 @@ function App() {
 
   useEffect(() => {
     // restore once on mount; later moves are picked up by the position poll below
-    const position = settings.position;
-    if (position) void moveTo(position.x, position.y);
+    void restorePosition(settings.position);
   }, []);
 
   useEffect(() => {
@@ -139,6 +138,7 @@ function App() {
             themeMode={settings.theme}
             resolvedTheme={resolvedTheme}
             infoActive={picker === "about"}
+            updateAvailable={updater.status === "available"}
             onTogglePin={() => update({ pinned: !settings.pinned })}
             onCompact={() => toggleCompact(true)}
             onCycleTheme={() => update({ theme: nextThemeMode(settings.theme) })}

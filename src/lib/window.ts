@@ -1,4 +1,9 @@
-import { getCurrentWindow, LogicalSize, PhysicalPosition } from "@tauri-apps/api/window";
+import {
+  availableMonitors,
+  getCurrentWindow,
+  LogicalSize,
+  PhysicalPosition,
+} from "@tauri-apps/api/window";
 import { openUrl } from "@tauri-apps/plugin-opener";
 
 const MIN_WIDTH = 110;
@@ -27,6 +32,34 @@ export function closeWidget(): Promise<void> {
 
 export function moveTo(x: number, y: number): Promise<void> {
   return safe(() => getCurrentWindow().setPosition(new PhysicalPosition(x, y)));
+}
+
+/**
+ * Applies a saved position only when it still lands on a connected display.
+ * A monitor that has since been unplugged would otherwise restore the widget
+ * off-screen, where it can neither be seen nor dragged back.
+ */
+export async function restorePosition(saved: { x: number; y: number } | null): Promise<void> {
+  if (!inTauri || !saved) return;
+  try {
+    const monitors = await availableMonitors();
+    if (monitors.length === 0) return;
+    // the drag area sits near the widget's top-left corner, so that point must be reachable
+    const grabX = saved.x + 60;
+    const grabY = saved.y + 12;
+    const reachable = monitors.some((monitor) => {
+      const { x, y } = monitor.position;
+      return (
+        grabX >= x &&
+        grabX < x + monitor.size.width &&
+        grabY >= y &&
+        grabY < y + monitor.size.height
+      );
+    });
+    if (reachable) await moveTo(saved.x, saved.y);
+  } catch {
+    // no monitor list available: stay where the window config placed it
+  }
 }
 
 export async function currentPosition(): Promise<{ x: number; y: number } | null> {

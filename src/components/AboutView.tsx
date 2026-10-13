@@ -66,7 +66,7 @@ export function AboutView({ onClose, updater }: AboutViewProps) {
           <button
             type="button"
             className="about__link"
-            onClick={() => openExternal(DEVELOPER.websiteUrl)}
+            onClick={() => void openExternal(DEVELOPER.websiteUrl)}
             title={`Open ${DEVELOPER.website}`}
           >
             <span className="about__link-icon">
@@ -80,7 +80,7 @@ export function AboutView({ onClose, updater }: AboutViewProps) {
           <button
             type="button"
             className="about__link"
-            onClick={() => openExternal(`mailto:${DEVELOPER.email}`)}
+            onClick={() => void openExternal(`mailto:${DEVELOPER.email}`)}
             title={`Email ${DEVELOPER.email}`}
           >
             <span className="about__link-icon">
