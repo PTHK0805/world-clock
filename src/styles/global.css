@@ -869,19 +869,32 @@ input {
   animation: row-in 0.16s ease-out;
 }
 
-.cal__header,
-.cal__month {
+.cal__header {
   display: flex;
   align-items: center;
   justify-content: space-between;
 }
 
-.cal__month-label {
+/* ---------- month grid (shared by the calendar and the meeting form) ---------- */
+
+.month {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.month__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.month__label {
   font-size: 13px;
   font-weight: 600;
 }
 
-.cal__nav {
+.month__nav {
   display: grid;
   place-items: center;
   width: 24px;
@@ -895,23 +908,23 @@ input {
   transition: background 0.12s ease, color 0.12s ease;
 }
 
-.cal__nav:hover {
+.month__nav:hover {
   background: var(--panel);
   color: var(--text);
 }
 
-.cal__nav--next svg {
+.month__nav--next svg {
   transform: rotate(180deg);
 }
 
-.cal__weekdays,
-.cal__grid {
+.month__weekdays,
+.month__grid {
   display: grid;
   grid-template-columns: repeat(7, 1fr);
   gap: 2px;
 }
 
-.cal__weekdays span {
+.month__weekdays span {
   text-align: center;
   font-size: 10px;
   font-weight: 600;
@@ -920,7 +933,7 @@ input {
   color: var(--faint);
 }
 
-.cal__day {
+.month__day {
   position: relative;
   height: 32px;
   padding: 0;
@@ -934,26 +947,26 @@ input {
   transition: background 0.12s ease, border-color 0.12s ease, color 0.12s ease;
 }
 
-.cal__day:hover {
+.month__day:hover {
   background: var(--panel);
 }
 
-.cal__day--outside {
+.month__day--outside {
   color: var(--faint);
 }
 
-.cal__day--today {
+.month__day--today {
   border-color: var(--accent-line);
 }
 
-.cal__day--selected {
+.month__day--selected {
   border-color: var(--accent-line-strong);
   background: var(--accent-soft);
   color: var(--accent-text);
   font-weight: 600;
 }
 
-.cal__dot {
+.month__dot {
   position: absolute;
   bottom: 3px;
   left: 50%;
@@ -1117,6 +1130,97 @@ input {
   gap: 8px;
 }
 
+.form__field {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 8px 10px;
+  border: 1px solid var(--stroke);
+  border-radius: 10px;
+  background: var(--input-bg);
+  color: var(--text);
+  font-size: 13px;
+  cursor: pointer;
+  transition: border-color 0.12s ease, background 0.12s ease;
+}
+
+.form__field:hover {
+  border-color: var(--accent-line);
+}
+
+.form__field--open {
+  border-color: var(--accent-line-strong);
+  background: var(--accent-soft);
+}
+
+.form__field-value {
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.form__field-icon {
+  display: grid;
+  place-items: center;
+  color: var(--faint);
+  transition: color 0.12s ease;
+}
+
+.form__field--open .form__field-icon {
+  color: var(--accent);
+}
+
+/* ---------- time picker ---------- */
+
+.time {
+  display: grid;
+  grid-template-columns: 1fr 1fr auto;
+  gap: 6px;
+  padding: 6px;
+  border: 1px solid var(--stroke);
+  border-radius: 10px;
+  background: var(--input-bg);
+}
+
+.time__column {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  max-height: 132px;
+  overflow-y: auto;
+}
+
+.time__column--meridiem {
+  flex: none;
+  justify-content: center;
+  width: 50px;
+}
+
+.time__option {
+  flex: none;
+  padding: 6px 0;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--muted);
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+  text-align: center;
+  cursor: pointer;
+  transition: background 0.12s ease, color 0.12s ease;
+}
+
+.time__option:hover {
+  background: var(--panel);
+  color: var(--text);
+}
+
+.time__option--active {
+  background: var(--accent-soft);
+  color: var(--accent-text);
+  font-weight: 600;
+}
+
 .form__zone {
   display: flex;
   flex-direction: column;
@@ -1204,6 +1308,40 @@ input {
   font-weight: 600;
   letter-spacing: 0.12em;
   text-transform: uppercase;
+  color: var(--faint);
+}
+
+.form__reminder-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.form__sound {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  margin: -2px 0;
+  padding: 3px 8px;
+  border: 1px solid var(--accent-line);
+  border-radius: 999px;
+  background: var(--accent-soft);
+  color: var(--accent-text);
+  font-size: 10.5px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.12s ease, border-color 0.12s ease, color 0.12s ease;
+}
+
+.form__sound:hover {
+  border-color: var(--accent-line-strong);
+  background: var(--accent-hover);
+}
+
+.form__sound--off {
+  border-color: var(--stroke);
+  background: transparent;
   color: var(--faint);
 }
 

@@ -27,6 +27,11 @@ const SCHEDULER_TICK: Duration = Duration::from_secs(5);
 const NOTIFY_WIDTH: f64 = 340.0;
 const NOTIFY_HEIGHT: f64 = 88.0;
 
+/// WebView2 blocks audio until a user gesture; the reminder card is shown without any
+/// interaction, so the chime needs explicit permission. The first switch restates
+/// WebView2's own defaults, which specifying additional args would otherwise drop.
+const NOTIFY_BROWSER_ARGS: &str = "--disable-features=msWebOOUI,msPdfOOUI,msSmartScreenProtection --autoplay-policy=no-user-gesture-required";
+
 /// A reminder prepared by the frontend: all display strings are already formatted there.
 #[derive(Clone, Serialize, Deserialize)]
 struct Reminder {
@@ -35,6 +40,12 @@ struct Reminder {
     fire_at_ms: i64,
     title: String,
     body: String,
+    #[serde(default = "default_sound")]
+    sound: bool,
+}
+
+fn default_sound() -> bool {
+    true
 }
 
 #[derive(Default)]
@@ -102,13 +113,15 @@ fn show_notification(app: &AppHandle, reminder: &Reminder) {
     }
 
     let query = format!(
-        "index.html?view=notification&title={}&body={}",
+        "index.html?view=notification&title={}&body={}&sound={}",
         percent_encode(&reminder.title),
         percent_encode(&reminder.body),
+        if reminder.sound { 1 } else { 0 },
     );
 
     let builder = WebviewWindowBuilder::new(app, NOTIFY_LABEL, WebviewUrl::App(query.into()))
         .title("Meeting reminder")
+        .additional_browser_args(NOTIFY_BROWSER_ARGS)
         .inner_size(NOTIFY_WIDTH, NOTIFY_HEIGHT)
         .decorations(false)
         .transparent(true)

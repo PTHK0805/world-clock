@@ -10,6 +10,8 @@ export interface Meeting {
   timeZone: string;
   /** Minutes before the meeting to remind, or null for no reminder. */
   leadMinutes: number | null;
+  /** Whether the reminder card plays a chime. */
+  sound: boolean;
 }
 
 export interface PendingReminder {
@@ -17,6 +19,7 @@ export interface PendingReminder {
   fireAtMs: number;
   title: string;
   body: string;
+  sound: boolean;
 }
 
 export const LEAD_OPTIONS: (number | null)[] = [null, 0, 1, 3, 5, 10, 15, 30];
@@ -63,6 +66,7 @@ function sanitize(raw: unknown): Meeting | null {
     time: value.time,
     timeZone,
     leadMinutes,
+    sound: value.sound !== false,
   };
 }
 
@@ -94,6 +98,7 @@ export function newMeeting(date: string, timeZone: string, time = "09:00"): Meet
     time,
     timeZone,
     leadMinutes: 5,
+    sound: true,
   };
 }
 
@@ -209,6 +214,7 @@ export function remindersFor(meetings: Meeting[], now: Date, hour12: boolean): P
       fireAtMs,
       title: meeting.title,
       body: bodyFor(meeting, instant, hour12),
+      sound: meeting.sound,
     });
   }
   return reminders.sort((a, b) => a.fireAtMs - b.fireAtMs);

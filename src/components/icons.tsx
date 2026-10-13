@@ -189,6 +189,48 @@ export function ExpandIcon({ size = 11 }: IconProps) {
   );
 }
 
+export function SpeakerIcon({ size = 13, muted = false }: IconProps & { muted?: boolean }) {
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.9"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <path d="M11 5 6.5 9H3v6h3.5L11 19V5Z" />
+      {muted ? (
+        <path d="m15.5 9.5 5 5m0-5-5 5" />
+      ) : (
+        <path d="M15 8.5a5 5 0 0 1 0 7M17.8 6.2a8.5 8.5 0 0 1 0 11.6" />
+      )}
+    </svg>
+  );
+}
+
+export function ClockIcon({ size = 14 }: IconProps) {
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.9"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <circle cx="12" cy="12" r="9" />
+      <path d="M12 7v5.4l3.4 2" />
+    </svg>
+  );
+}
+
 export function CalendarIcon({ size = 15 }: IconProps) {
   return (
     <svg

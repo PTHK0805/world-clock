@@ -1,7 +1,9 @@
 import { useMemo, useState } from "react";
 import { cityLabel, localZone, offsetLabel, searchZones } from "../lib/timezones";
-import { LEAD_OPTIONS, leadLongLabel, leadLabel, meetingInstant, type Meeting } from "../lib/meetings";
-import { BellIcon, ChevronLeftIcon, TrashIcon } from "./icons";
+import { LEAD_OPTIONS, leadLongLabel, leadLabel, meetingInstant, todayKey, type Meeting } from "../lib/meetings";
+import { BellIcon, CalendarIcon, ChevronLeftIcon, ClockIcon, SpeakerIcon, TrashIcon } from "./icons";
+import { MonthGrid, partsFromKey, shortDateLabel } from "./MonthGrid";
+import { TimePicker, formatTime } from "./TimePicker";
 
 interface MeetingFormProps {
   draft: Meeting;
@@ -9,6 +11,7 @@ interface MeetingFormProps {
   zones: string[];
   heroZone: string;
   hour12: boolean;
+  marked?: Set<string>;
   onSave: (meeting: Meeting) => void;
   onCancel: () => void;
   onDelete: (id: string) => void;
@@ -16,12 +19,15 @@ interface MeetingFormProps {
 
 const QUICK_ZONE_LIMIT = 5;
 
+type OpenPicker = null | "date" | "time" | "zone";
+
 export function MeetingForm({
   draft,
   mode,
   zones,
   heroZone,
   hour12,
+  marked,
   onSave,
   onCancel,
   onDelete,
@@ -31,11 +37,17 @@ export function MeetingForm({
   const [time, setTime] = useState(draft.time);
   const [timeZone, setTimeZone] = useState(draft.timeZone);
   const [leadMinutes, setLeadMinutes] = useState<number | null>(draft.leadMinutes);
+  const [sound, setSound] = useState(draft.sound);
   const [zoneSearch, setZoneSearch] = useState("");
-  const [pickingZone, setPickingZone] = useState(false);
+  const [open, setOpen] = useState<OpenPicker>(null);
+  const [cursor, setCursor] = useState(() => {
+    const [year, month] = partsFromKey(draft.date);
+    return { year, month };
+  });
   const [error, setError] = useState("");
 
   const local = localZone();
+  const today = todayKey(heroZone);
   const isEditing = mode === "edit";
 
   const quickZones = useMemo(() => {
@@ -66,6 +78,10 @@ export function MeetingForm({
           return `${pick("hour")}:${pick("minute")}${period ? ` ${period}` : ""}`;
         })();
 
+  const toggle = (next: Exclude<OpenPicker, null>) => {
+    setOpen((current) => (current === next ? null : next));
+  };
+
   const save = () => {
     if (!date || !time) {
       setError("Pick a date and a time");
@@ -82,6 +98,7 @@ export function MeetingForm({
       time,
       timeZone,
       leadMinutes,
+      sound,
     });
   };
 
@@ -116,22 +133,47 @@ export function MeetingForm({
       />
 
       <div className="form__row">
-        <input
-          className="form__input"
-          type="date"
-          value={date}
-          onChange={(event) => setDate(event.currentTarget.value)}
-        />
-        <input
-          className="form__input"
-          type="time"
-          value={time}
-          onChange={(event) => setTime(event.currentTarget.value)}
-        />
+        <button
+          type="button"
+          className={`form__field${open === "date" ? " form__field--open" : ""}`}
+          onClick={() => toggle("date")}
+        >
+          <span className="form__field-value">{shortDateLabel(date)}</span>
+          <span className="form__field-icon">
+            <CalendarIcon size={14} />
+          </span>
+        </button>
+        <button
+          type="button"
+          className={`form__field${open === "time" ? " form__field--open" : ""}`}
+          onClick={() => toggle("time")}
+        >
+          <span className="form__field-value">{formatTime(time, hour12)}</span>
+          <span className="form__field-icon">
+            <ClockIcon />
+          </span>
+        </button>
       </div>
 
+      {open === "date" && (
+        <MonthGrid
+          year={cursor.year}
+          month={cursor.month}
+          selected={date}
+          today={today}
+          marked={marked}
+          onSelect={(next) => {
+            setDate(next);
+            setOpen(null);
+          }}
+          onMonthChange={(year, month) => setCursor({ year, month })}
+        />
+      )}
+
+      {open === "time" && <TimePicker value={time} hour12={hour12} onChange={setTime} />}
+
       <div className="form__zone">
-        {pickingZone ? (
+        {open === "zone" ? (
           <>
             <input
               className="form__input"
@@ -148,7 +190,7 @@ export function MeetingForm({
                   className={`form__zone-item${zone === timeZone ? " form__zone-item--active" : ""}`}
                   onClick={() => {
                     setTimeZone(zone);
-                    setPickingZone(false);
+                    setOpen(null);
                     setZoneSearch("");
                   }}
                 >
@@ -162,7 +204,7 @@ export function MeetingForm({
             </div>
           </>
         ) : (
-          <button type="button" className="form__zone-current" onClick={() => setPickingZone(true)}>
+          <button type="button" className="form__zone-current" onClick={() => toggle("zone")}>
             <span className="form__zone-city">{cityLabel(timeZone)}</span>
             <span className="form__zone-offset">{offsetLabel(timeZone, instant)}</span>
             {localPreview && <span className="form__zone-local">your {localPreview}</span>}
@@ -171,9 +213,21 @@ export function MeetingForm({
       </div>
 
       <div className="form__reminder">
-        <span className="form__label">
-          <BellIcon /> {leadLongLabel(leadMinutes)}
-        </span>
+        <div className="form__reminder-head">
+          <span className="form__label">
+            <BellIcon /> {leadLongLabel(leadMinutes)}
+          </span>
+          <button
+            type="button"
+            className={`form__sound${sound ? "" : " form__sound--off"}`}
+            onClick={() => setSound((current) => !current)}
+            title={sound ? "Chime on" : "Chime off"}
+            aria-pressed={sound}
+          >
+            <SpeakerIcon muted={!sound} size={13} />
+            <span>{sound ? "Chime" : "Muted"}</span>
+          </button>
+        </div>
         <div className="form__chips">
           {LEAD_OPTIONS.map((option) => (
             <button
