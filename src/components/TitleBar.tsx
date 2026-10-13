@@ -1,7 +1,7 @@
 import type { ThemeMode } from "../lib/storage";
 import type { ResolvedTheme } from "../hooks/useTheme";
 import { themeLabel } from "../hooks/useTheme";
-import { CloseIcon, CompactIcon, InfoIcon, MonitorIcon, MoonIcon, PinIcon, SunIcon } from "./icons";
+import { CalendarIcon, CloseIcon, CompactIcon, InfoIcon, MonitorIcon, MoonIcon, PinIcon, SunIcon } from "./icons";
 
 function ThemeIcon({ mode }: { mode: ThemeMode }) {
   if (mode === "light") return <SunIcon size={15} />;
@@ -14,11 +14,13 @@ interface TitleBarProps {
   themeMode: ThemeMode;
   resolvedTheme: ResolvedTheme;
   infoActive: boolean;
+  calendarActive: boolean;
   updateAvailable: boolean;
   onTogglePin: () => void;
   onCompact: () => void;
   onCycleTheme: () => void;
   onInfo: () => void;
+  onCalendar: () => void;
   onClose: () => void;
 }
 
@@ -27,11 +29,13 @@ export function TitleBar({
   themeMode,
   resolvedTheme,
   infoActive,
+  calendarActive,
   updateAvailable,
   onTogglePin,
   onCompact,
   onCycleTheme,
   onInfo,
+  onCalendar,
   onClose,
 }: TitleBarProps) {
   return (
@@ -40,6 +44,15 @@ export function TitleBar({
         World Clock
       </span>
       <div className="titlebar__actions">
+        <button
+          type="button"
+          className={`icon-btn${calendarActive ? " icon-btn--active" : ""}`}
+          onClick={onCalendar}
+          title="Calendar and meetings"
+          aria-pressed={calendarActive}
+        >
+          <CalendarIcon />
+        </button>
         <button
           type="button"
           className={`icon-btn${infoActive ? " icon-btn--active" : ""}${updateAvailable ? " icon-btn--badge" : ""}`}

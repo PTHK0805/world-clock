@@ -14,6 +14,10 @@ Built with Tauri 2 + React + TypeScript. No runtime dependencies for time logic 
 - Compact mode: a small pill showing only the time (click the titlebar icon to switch). Click the pill to expand it again, drag it to move it
 - Light, dark, and follow-Windows themes — the titlebar theme button cycles system → light → dark
 - Developer info view (titlebar ⓘ button) that takes over the whole widget — name, website, and email links that open in the default browser or mail app
+- Calendar with meetings — a month grid with dots on days that have meetings, plus the selected day's agenda
+- Every meeting carries its own timezone, shown with your local equivalent (`15:00 GMT-7 · 17:00 your time`)
+- Custom reminder card before a meeting — pick `Off · At start · 1m · 3m · 5m · 10m · 15m · 30m`. It's our own window, not a Windows toast
+- Reminders fire even while the widget is hidden in the tray
 - System tray icon with a right-click menu: Show / Hide, Start with Windows, Quit — left-click toggles the widget
 - No taskbar button (and no Alt+Tab entry) — the widget lives in the tray
 - Starts with Windows by default; untick "Start with Windows" in the tray menu to opt out
@@ -121,13 +125,27 @@ This produces `World Clock_<version>_x64-setup.exe` plus a matching `.sig` next 
 
 ```
 src/
-  components/    TitleBar, HeroClock, ZoneList, ZoneRow, ZonePickerPanel, CompactClock, AboutView, Footer, icons
-  hooks/         useNow (second-aligned tick), useSettings (persisted state), useTheme (system/light/dark)
-  lib/           timezones (Intl formatting/search), storage (localStorage), window (Tauri APIs)
+  components/    TitleBar, HeroClock, ZoneList, ZoneRow, ZonePickerPanel, CompactClock,
+                 CalendarView, MeetingForm, NotificationCard, AboutView, Footer, icons
+  hooks/         useNow (second-aligned tick), useSettings (persisted state),
+                 useTheme (system/light/dark), useUpdater
+  lib/           timezones (Intl formatting/search), meetings (model + instant maths),
+                 storage (localStorage), reminders (Tauri commands), window (Tauri APIs)
 src-tauri/
+  src/lib.rs             tray, autostart, reminder scheduler, notification window
   tauri.conf.json        window config: frameless, transparent, always on top
   capabilities/default.json  window permissions
 ```
+
+Calendar notes:
+- Meetings are stored under their own `world-clock:events:v1` key so the 2-second window-position
+  poll doesn't rewrite them.
+- A meeting's wall time is converted to an absolute instant with `Intl` (two passes so DST
+  transitions land on the intended local time) rather than pulling in a date library.
+- Reminders are scheduled in Rust, not with JS timers: a hidden webview gets its timers throttled
+  by Chromium, which is exactly when a reminder still has to fire.
+- The reminder card lives in its own `notify` window — the same bundle, routed by
+  `?view=notification` — which is why `notify` is listed in the capability's window list.
 
 Theming: both palettes live in `src/styles/global.css` — dark is the `:root` default and light is applied via `data-theme="light"` on the widget element, so switching themes only swaps CSS variables.
 

@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { AboutView } from "./components/AboutView";
+import { CalendarView } from "./components/CalendarView";
 import { CompactClock } from "./components/CompactClock";
 import { Footer } from "./components/Footer";
 import { HeroClock } from "./components/HeroClock";
@@ -12,14 +13,17 @@ import { useResolvedTheme, nextThemeMode } from "./hooks/useTheme";
 import { useUpdater } from "./hooks/useUpdater";
 import { saveSettings } from "./lib/storage";
 import { localZone } from "./lib/timezones";
+import { loadMeetings, remindersFor, saveMeetings, type Meeting } from "./lib/meetings";
+import { syncReminders } from "./lib/reminders";
 import { closeWidget, currentPosition, resizeToContent, restorePosition, setPinned } from "./lib/window";
 
-type PickerMode = "list" | "primary" | "about";
+type PickerMode = "list" | "primary" | "about" | "calendar";
 
 function App() {
   const now = useNow();
   const { settings, update } = useSettings();
   const [picker, setPicker] = useState<PickerMode | null>(null);
+  const [meetings, setMeetings] = useState<Meeting[]>(loadMeetings);
   const widgetRef = useRef<HTMLDivElement>(null);
   const resolvedTheme = useResolvedTheme(settings.theme);
   const updater = useUpdater();
@@ -74,6 +78,27 @@ function App() {
       cancelAnimationFrame(frame);
       observer.disconnect();
     };
+  }, []);
+
+  useEffect(() => {
+    saveMeetings(meetings);
+    // hand the upcoming reminders to the Rust scheduler, which fires them even
+    // while the widget sits hidden in the tray
+    void syncReminders(remindersFor(meetings, new Date(), settings.hour12));
+  }, [meetings, settings.hour12]);
+
+  const saveMeeting = useCallback((meeting: Meeting) => {
+    setMeetings((current) => {
+      const index = current.findIndex((existing) => existing.id === meeting.id);
+      if (index === -1) return [...current, meeting];
+      const next = [...current];
+      next[index] = meeting;
+      return next;
+    });
+  }, []);
+
+  const deleteMeeting = useCallback((id: string) => {
+    setMeetings((current) => current.filter((meeting) => meeting.id !== id));
   }, []);
 
   const addZone = useCallback(
@@ -138,14 +163,26 @@ function App() {
             themeMode={settings.theme}
             resolvedTheme={resolvedTheme}
             infoActive={picker === "about"}
+            calendarActive={picker === "calendar"}
             updateAvailable={updater.status === "available"}
             onTogglePin={() => update({ pinned: !settings.pinned })}
             onCompact={() => toggleCompact(true)}
             onCycleTheme={() => update({ theme: nextThemeMode(settings.theme) })}
             onInfo={() => setPicker((mode) => (mode === "about" ? null : "about"))}
+            onCalendar={() => setPicker((mode) => (mode === "calendar" ? null : "calendar"))}
             onClose={() => void handleClose()}
           />
-          {picker === "about" ? (
+          {picker === "calendar" ? (
+            <CalendarView
+              meetings={meetings}
+              zones={settings.zones}
+              heroZone={heroZone}
+              hour12={settings.hour12}
+              onSave={saveMeeting}
+              onDelete={deleteMeeting}
+              onClose={() => setPicker(null)}
+            />
+          ) : picker === "about" ? (
             <AboutView onClose={() => setPicker(null)} updater={updater} />
           ) : (
             <>
