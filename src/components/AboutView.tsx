@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { getVersion } from "@tauri-apps/api/app";
-import { CloseIcon, DownloadIcon, ExternalLinkIcon, GlobeIcon, MailIcon, RefreshIcon } from "./icons";
+import { CloseIcon, ExternalLinkIcon, GlobeIcon, MailIcon, RefreshIcon } from "./icons";
 import { openExternal } from "../lib/window";
 import type { Updater } from "../hooks/useUpdater";
 
@@ -18,7 +18,7 @@ interface AboutViewProps {
 
 export function AboutView({ onClose, updater }: AboutViewProps) {
   const [appVersion, setAppVersion] = useState("");
-  const { status, version, progress, checkForUpdates, install } = updater;
+  const { status, version, progress, checkForUpdates, restart } = updater;
 
   useEffect(() => {
     getVersion()
@@ -29,8 +29,8 @@ export function AboutView({ onClose, updater }: AboutViewProps) {
   const updateLabel =
     status === "checking"
       ? "Checking for updates…"
-      : status === "available"
-        ? `Update to v${version}`
+      : status === "downloading"
+        ? `Downloading v${version}…`
         : status === "uptodate"
           ? `Up to date${appVersion ? ` — v${appVersion}` : ""}`
           : status === "error"
@@ -102,22 +102,40 @@ export function AboutView({ onClose, updater }: AboutViewProps) {
               </span>
               <span className="about__progress-label">{progress}%</span>
             </div>
+          ) : status === "ready" ? (
+            <button
+              type="button"
+              className="about__link about__link--accent"
+              onClick={() => void restart()}
+              title={`Restart to finish updating to v${version}`}
+            >
+              <span className="about__link-icon">
+                <RefreshIcon />
+              </span>
+              <span className="about__link-text">Restart to update to v{version}</span>
+              <span className="about__link-open">
+                <RefreshIcon />
+              </span>
+            </button>
           ) : (
             <button
               type="button"
-              className={`about__link${status === "available" ? " about__link--accent" : ""}`}
-              onClick={() => (status === "available" ? void install() : void checkForUpdates())}
+              className="about__link"
+              onClick={() => void checkForUpdates()}
               disabled={status === "checking"}
-              title={status === "available" ? `Install World Clock v${version}` : "Check for updates"}
+              title="Check for updates"
             >
               <span className="about__link-icon">
-                {status === "available" ? <DownloadIcon /> : <RefreshIcon />}
+                <RefreshIcon />
               </span>
               <span className="about__link-text">{updateLabel}</span>
               <span className="about__link-open">
-                {status === "available" ? <DownloadIcon /> : <RefreshIcon />}
+                <RefreshIcon />
               </span>
             </button>
+          )}
+          {status === "ready" && (
+            <p className="about__note">Downloaded and ready. Restarting installs it and brings the widget back.</p>
           )}
         </div>
       </div>

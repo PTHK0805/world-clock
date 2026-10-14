@@ -25,7 +25,8 @@ Built with Tauri 2 + React + TypeScript. No runtime dependencies for time logic 
 - No taskbar button (and no Alt+Tab entry) — the widget lives in the tray
 - Starts with Windows by default; untick "Start with Windows" in the tray menu to opt out
 - Closing the widget (X) hides it to the tray instead of exiting — use Quit in the tray menu to exit
-- Always-on-top pin toggle, backed by the native `WS_EX_TOPMOST` window flag
+- Always-on-top pin toggle, backed by the native `WS_EX_TOPMOST` window flag — pinned by default, and re-asserted whenever the widget regains focus
+- Updates download themselves in the background (checked at launch and every 6 hours); a badge appears on the ⓘ button and About offers a single **Restart to update**, which hands off to the installer and brings the widget back
 - Window position, timezone list, main-clock zone, compact state, theme, and 12/24h preference persist across restarts
 - Rounded, transparent, themed UI (light and dark) with reduced-motion support
 

@@ -48,6 +48,20 @@ function App() {
   }, [settings.pinned]);
 
   useEffect(() => {
+    // Windows can drop the topmost flag (after a fullscreen app, for instance), so
+    // re-assert it whenever the widget regains focus
+    const reassert = () => {
+      if (settings.pinned) void setPinned(true);
+    };
+    window.addEventListener("focus", reassert);
+    document.addEventListener("visibilitychange", reassert);
+    return () => {
+      window.removeEventListener("focus", reassert);
+      document.removeEventListener("visibilitychange", reassert);
+    };
+  }, [settings.pinned]);
+
+  useEffect(() => {
     // restore once on mount; later moves are picked up by the position poll below
     void restorePosition(settings.position);
   }, []);
@@ -203,7 +217,7 @@ function App() {
             resolvedTheme={resolvedTheme}
             infoActive={picker === "about"}
             calendarActive={picker === "calendar"}
-            updateAvailable={updater.status === "available"}
+            updateAvailable={updater.status === "downloading" || updater.status === "ready"}
             onTogglePin={() => update({ pinned: !settings.pinned })}
             onCompact={() => toggleCompact(true)}
             onCycleTheme={() => update({ theme: nextThemeMode(settings.theme) })}
