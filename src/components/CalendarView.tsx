@@ -92,6 +92,13 @@ export function CalendarView({
   const marked = useMemo(() => meetingDates(meetings), [meetings]);
   const agenda = useMemo(() => agendaFor(meetings, selected), [meetings, selected]);
 
+  // the widget sizes itself to its content, so a busy day would push the window off
+  // the screen; cap the list and let it scroll instead
+  const agendaMaxHeight = useMemo(() => {
+    const available = window.screen?.availHeight || 800;
+    return Math.max(150, Math.min(420, Math.round(available - 520)));
+  }, []);
+
   const openNew = () => {
     setViewing(null);
     setEditing({ meeting: newMeeting(selected, heroZone), mode: "new" });
@@ -146,7 +153,7 @@ export function CalendarView({
         onMonthChange={(year, month) => setCursor({ year, month })}
       />
 
-      <div className="cal__agenda">
+      <div className="cal__agenda" style={{ maxHeight: agendaMaxHeight }}>
         <div className="cal__agenda-head">
           <span className="cal__agenda-day">{dayLabel(selected, today)}</span>
           <span className="cal__agenda-date">{selected}</span>

@@ -392,67 +392,131 @@ function parseExdates(map: Map<string, Property[]>, fallbackZone: string): Set<n
   return excluded;
 }
 
+interface Block {
+  uid: string;
+  title: string;
+  link: string | null;
+  start: WallTime;
+  rule: Rule | null;
+  excluded: Set<number>;
+  /** Set when this block overrides one instance of a series (RECURRENCE-ID). */
+  overrides: number | null;
+}
+
+function readBlock(map: Map<string, Property[]>, fallbackZone: string): Block | null {
+  const startProperty = firstProperty(map, "DTSTART");
+  const start = startProperty ? parseWallTime(startProperty, fallbackZone) : null;
+  if (!start) return null;
+  if (Number.isNaN(wallTimeInstant(start.date, start.time, start.timeZone).getTime())) return null;
+
+  const title = textValue(map, "SUMMARY") || "Busy";
+  const ruleProperty = firstProperty(map, "RRULE");
+  const recurrenceProperty = firstProperty(map, "RECURRENCE-ID");
+  const recurrence = recurrenceProperty ? parseWallTime(recurrenceProperty, start.timeZone) : null;
+
+  return {
+    uid: textValue(map, "UID") || `${title}:${start.date}`,
+    title,
+    link: linkFrom(map),
+    start,
+    rule: ruleProperty ? parseRule(ruleProperty.value, start.timeZone) : null,
+    excluded: parseExdates(map, fallbackZone),
+    overrides: recurrence
+      ? wallTimeInstant(recurrence.date, recurrence.time, recurrence.timeZone).getTime()
+      : null,
+  };
+}
+
+function eventFrom(block: Block, date: string, instant: Date): ExternalEvent {
+  const wall = block.start.allDay ? null : clockParts(block.start.timeZone, instant, false);
+  return {
+    uid: block.uid,
+    title: block.title,
+    date,
+    time: block.start.allDay
+      ? "00:00"
+      : `${wall?.hour ?? block.start.time.slice(0, 2)}:${wall?.minute ?? block.start.time.slice(3)}`,
+    timeZone: block.start.timeZone,
+    allDay: block.start.allDay,
+    link: block.link,
+    instant,
+  };
+}
+
 export function parseIcal(source: string, windowStart: Date, windowEnd: Date): ParseResult {
   const fallbackZone = localZone();
   const events: ExternalEvent[] = [];
   let unexpandedSeries = 0;
 
-  let block: string[] | null = null;
+  // pass 1: read every VEVENT, so overrides can be found before any series is expanded
+  const blocks: Block[] = [];
+  let pending: string[] | null = null;
   for (const line of unfold(source)) {
     const marker = line.trim().toUpperCase();
     if (marker === "BEGIN:VEVENT") {
-      block = [];
+      pending = [];
       continue;
     }
     if (marker !== "END:VEVENT") {
-      if (block) block.push(line);
+      if (pending) pending.push(line);
       continue;
     }
-    if (!block) continue;
-    const map = propertyMap(block);
-    block = null;
+    if (pending) {
+      const block = readBlock(propertyMap(pending), fallbackZone);
+      if (block) blocks.push(block);
+    }
+    pending = null;
+  }
 
-    const startProperty = firstProperty(map, "DTSTART");
-    const start = startProperty ? parseWallTime(startProperty, fallbackZone) : null;
-    if (!start) continue;
+  // an edited instance must not also appear at its original slot
+  const overridden = new Map<string, Set<number>>();
+  for (const block of blocks) {
+    if (block.overrides === null) continue;
+    const set = overridden.get(block.uid);
+    if (set) set.add(block.overrides);
+    else overridden.set(block.uid, new Set([block.overrides]));
+  }
 
-    const ruleProperty = firstProperty(map, "RRULE");
-    const rule = ruleProperty ? parseRule(ruleProperty.value, start.timeZone) : null;
-    const excluded = parseExdates(map, fallbackZone);
-    const title = textValue(map, "SUMMARY") || "Busy";
-    const link = linkFrom(map);
-    const uid = textValue(map, "UID") || `${title}:${start.date}`;
+  const inWindow = (instant: Date) =>
+    instant.getTime() >= windowStart.getTime() && instant.getTime() <= windowEnd.getTime();
+  const seen = new Set<string>();
+  const push = (block: Block, date: string, instant: Date) => {
+    const key = `${block.uid}:${instant.getTime()}`;
+    if (seen.has(key)) return;
+    seen.add(key);
+    events.push(eventFrom(block, date, instant));
+  };
 
-    if (rule && !rule.supported) {
+  for (const block of blocks) {
+    if (events.length >= MAX_EVENTS) break;
+
+    if (block.overrides !== null) {
+      // the edited instance stands on its own
+      const instant = wallTimeInstant(block.start.date, block.start.time, block.start.timeZone);
+      if (!Number.isNaN(instant.getTime()) && inWindow(instant)) push(block, block.start.date, instant);
+      continue;
+    }
+
+    if (block.rule && !block.rule.supported) {
       unexpandedSeries++;
       continue;
     }
 
-    const dates = rule
-      ? occurrenceDates(start, rule, excluded, windowStart, windowEnd)
-      : [start.date];
+    const excluded = new Set(block.excluded);
+    for (const instant of overridden.get(block.uid) ?? []) excluded.add(instant);
 
-    for (const date of dates) {
-      const instant = wallTimeInstant(date, start.time, start.timeZone);
-      if (Number.isNaN(instant.getTime())) continue;
-      if (!rule) {
-        if (excluded.has(instant.getTime())) continue;
-        if (instant.getTime() < windowStart.getTime() || instant.getTime() > windowEnd.getTime()) continue;
+    if (block.rule) {
+      for (const date of occurrenceDates(block.start, block.rule, excluded, windowStart, windowEnd)) {
+        const instant = wallTimeInstant(date, block.start.time, block.start.timeZone);
+        if (!Number.isNaN(instant.getTime())) push(block, date, instant);
       }
-      const wall = start.allDay ? null : clockParts(start.timeZone, instant, false);
-      events.push({
-        uid,
-        title,
-        date,
-        time: start.allDay ? "00:00" : `${wall?.hour ?? start.time.slice(0, 2)}:${wall?.minute ?? start.time.slice(3)}`,
-        timeZone: start.timeZone,
-        allDay: start.allDay,
-        link,
-        instant,
-      });
-      if (events.length >= MAX_EVENTS) break;
+      continue;
     }
-    if (events.length >= MAX_EVENTS) break;
+
+    const instant = wallTimeInstant(block.start.date, block.start.time, block.start.timeZone);
+    if (Number.isNaN(instant.getTime())) continue;
+    if (block.excluded.has(instant.getTime()) || !inWindow(instant)) continue;
+    push(block, block.start.date, instant);
   }
 
   events.sort((a, b) => a.instant.getTime() - b.instant.getTime());
