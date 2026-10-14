@@ -1011,22 +1011,48 @@ input {
 }
 
 .cal__row {
-  display: grid;
-  grid-template-columns: auto 1fr auto;
+  display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 7px 9px;
+  gap: 4px;
+  padding-right: 7px;
   border: 1px solid transparent;
   border-radius: 10px;
-  background: transparent;
-  text-align: left;
-  cursor: pointer;
   transition: background 0.12s ease, border-color 0.12s ease;
 }
 
 .cal__row:hover {
   border-color: var(--stroke);
   background: var(--panel);
+}
+
+.cal__row-main {
+  flex: 1;
+  display: grid;
+  grid-template-columns: auto 1fr;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  padding: 7px 3px 7px 9px;
+  border: 0;
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+}
+
+.cal__join {
+  flex: none;
+  display: grid;
+  place-items: center;
+  padding: 3px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  cursor: pointer;
+  transition: background 0.12s ease;
+}
+
+.cal__join:hover {
+  background: var(--accent-soft);
 }
 
 .cal__row-time {
@@ -1059,6 +1085,10 @@ input {
   color: var(--muted);
 }
 
+.cal__row-provider {
+  color: var(--muted);
+}
+
 .cal__row-bell {
   display: grid;
   place-items: center;
@@ -1085,6 +1115,46 @@ input {
 .cal__new:hover {
   border-color: var(--accent-line-strong);
   background: var(--accent-hover);
+}
+
+/* ---------- meeting provider badge ---------- */
+
+.provider {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+.provider__icon {
+  flex: none;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  border-radius: 6px;
+  background: var(--provider-color);
+  color: #fff;
+}
+
+.provider__icon--image {
+  padding: 2px;
+  background: var(--panel);
+}
+
+.provider__icon img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.provider__name {
+  overflow: hidden;
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--muted);
+  white-space: nowrap;
+  text-overflow: ellipsis;
 }
 
 /* ---------- meeting form ---------- */
@@ -1300,6 +1370,25 @@ input {
   gap: 6px;
 }
 
+.form__link {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.form__link-icon {
+  flex: none;
+  display: grid;
+  place-items: center;
+  color: var(--faint);
+}
+
+.form__input--link {
+  flex: 1;
+  min-width: 0;
+  font-size: 12.5px;
+}
+
 .form__label {
   display: inline-flex;
   align-items: center;
@@ -1398,6 +1487,162 @@ input {
   background: var(--accent-hover);
 }
 
+/* ---------- google calendar subscription ---------- */
+
+.gcal {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid var(--stroke);
+}
+
+.gcal__head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 4px 2px;
+  border: 0;
+  background: transparent;
+  color: var(--text);
+  text-align: left;
+  cursor: pointer;
+}
+
+.gcal__title {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.gcal__status {
+  margin-left: auto;
+  font-size: 10.5px;
+  color: var(--faint);
+}
+
+.gcal__hint {
+  margin: 0;
+  font-size: 11px;
+  line-height: 1.45;
+  color: var(--faint);
+}
+
+.gcal__actions {
+  display: flex;
+  gap: 6px;
+}
+
+.gcal__action {
+  flex: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  padding: 7px 10px;
+  border: 1px solid var(--stroke);
+  border-radius: 9px;
+  background: transparent;
+  color: var(--muted);
+  font-size: 11.5px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.12s ease, color 0.12s ease, border-color 0.12s ease;
+}
+
+.gcal__action:hover:not(:disabled) {
+  border-color: var(--accent-line);
+  background: var(--panel);
+  color: var(--text);
+}
+
+.gcal__action:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+
+.cal__row-source {
+  display: inline-flex;
+  margin-right: 5px;
+  vertical-align: -1px;
+  color: var(--faint);
+}
+
+/* ---------- imported event (read-only) ---------- */
+
+.external__title {
+  margin: 2px 0;
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.external__row {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 9px 11px;
+  border: 1px solid var(--stroke);
+  border-radius: 10px;
+  background: var(--panel);
+}
+
+.external__label {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--faint);
+}
+
+.external__value {
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+}
+
+.external__sub {
+  font-size: 11px;
+  color: var(--muted);
+}
+
+.external__join {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 9px 12px;
+  border: 1px solid var(--accent-line);
+  border-radius: 10px;
+  background: var(--accent-soft);
+  color: var(--accent-text);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.12s ease, border-color 0.12s ease;
+}
+
+.external__join:hover {
+  border-color: var(--accent-line-strong);
+  background: var(--accent-hover);
+}
+
+.external__note {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  margin: 0;
+  font-size: 10.5px;
+  color: var(--faint);
+}
+
+.form__save:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
 /* ---------- reminder card (its own window) ---------- */
 
 .notify {
@@ -1445,9 +1690,21 @@ input {
 
 .notify__text {
   display: flex;
+  flex: 1;
   flex-direction: column;
   gap: 3px;
   min-width: 0;
+}
+
+.notify__join {
+  flex: none;
+  margin-right: 2px;
+  padding: 3px 9px;
+  border-radius: 999px;
+  background: var(--accent-soft);
+  color: var(--accent-text);
+  font-size: 11px;
+  font-weight: 600;
 }
 
 .notify__title {

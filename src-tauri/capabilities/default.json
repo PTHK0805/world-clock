@@ -8,6 +8,10 @@
     "opener:default",
     "updater:default",
     "process:default",
+    {
+      "identifier": "http:default",
+      "allow": [{ "url": "https://calendar.google.com/*" }]
+    },
     "core:window:allow-start-dragging",
     "core:window:allow-close",
     "core:window:allow-set-always-on-top",

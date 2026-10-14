@@ -42,6 +42,8 @@ struct Reminder {
     body: String,
     #[serde(default = "default_sound")]
     sound: bool,
+    #[serde(default)]
+    link: Option<String>,
 }
 
 fn default_sound() -> bool {
@@ -113,10 +115,11 @@ fn show_notification(app: &AppHandle, reminder: &Reminder) {
     }
 
     let query = format!(
-        "index.html?view=notification&title={}&body={}&sound={}",
+        "index.html?view=notification&title={}&body={}&sound={}&link={}",
         percent_encode(&reminder.title),
         percent_encode(&reminder.body),
         if reminder.sound { 1 } else { 0 },
+        percent_encode(reminder.link.as_deref().unwrap_or("")),
     );
 
     let builder = WebviewWindowBuilder::new(app, NOTIFY_LABEL, WebviewUrl::App(query.into()))
@@ -214,6 +217,7 @@ pub fn run() {
             None::<Vec<&str>>,
         ))
         .plugin(tauri_plugin_process::init())
+        .plugin(tauri_plugin_http::init())
         .plugin(tauri_plugin_updater::Builder::new().build())
         .manage(ReminderState::default())
         .invoke_handler(tauri::generate_handler![sync_reminders, focus_main])

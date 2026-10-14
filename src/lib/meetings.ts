@@ -1,4 +1,5 @@
 import { clockParts, listTimezones, localZone, normalizeZone, offsetLabel } from "./timezones";
+import { normalizeLink } from "./links";
 
 export interface Meeting {
   id: string;
@@ -12,6 +13,12 @@ export interface Meeting {
   leadMinutes: number | null;
   /** Whether the reminder card plays a chime. */
   sound: boolean;
+  /** Video-call URL for the meeting, or null. */
+  link: string | null;
+  /** Where the meeting came from; imported events are read-only in the UI. */
+  source: "local" | "google";
+  /** All-day entries from a feed, shown without a time and without a reminder. */
+  allDay: boolean;
 }
 
 export interface PendingReminder {
@@ -20,6 +27,7 @@ export interface PendingReminder {
   title: string;
   body: string;
   sound: boolean;
+  link: string | null;
 }
 
 export const LEAD_OPTIONS: (number | null)[] = [null, 0, 1, 3, 5, 10, 15, 30];
@@ -67,6 +75,9 @@ function sanitize(raw: unknown): Meeting | null {
     timeZone,
     leadMinutes,
     sound: value.sound !== false,
+    link: normalizeLink(value.link),
+    source: value.source === "google" ? "google" : "local",
+    allDay: value.allDay === true,
   };
 }
 
@@ -90,16 +101,25 @@ export function saveMeetings(meetings: Meeting[]): void {
   }
 }
 
-export function newMeeting(date: string, timeZone: string, time = "09:00"): Meeting {
+export function newMeeting(date: string, timeZone: string, time?: string): Meeting {
   return {
     id: crypto.randomUUID(),
     title: "",
     date,
-    time,
+    time: time ?? currentWallTime(timeZone),
     timeZone,
     leadMinutes: 5,
     sound: true,
+    link: null,
+    source: "local",
+    allDay: false,
   };
+}
+
+/** Now, as 24h `HH:MM` on the wall clock of the given zone. */
+function currentWallTime(timeZone: string): string {
+  const parts = clockParts(timeZone, new Date(), false);
+  return `${parts.hour}:${parts.minute}`;
 }
 
 /* ---------- wall time -> absolute instant ---------- */
@@ -143,16 +163,20 @@ function zoneOffsetMs(timeZone: string, instant: Date): number {
 
 /**
  * Turns a wall-clock date/time in a specific timezone into an absolute instant.
- * A second pass re-reads the offset at the resulting instant so that meetings set
+ * A second pass re-reads the offset at the resulting instant so that times set
  * across a DST change still land on the intended local time.
  */
-export function meetingInstant(meeting: Pick<Meeting, "date" | "time" | "timeZone">): Date {
-  const naive = Date.parse(`${meeting.date}T${meeting.time}:00Z`);
+export function wallTimeInstant(date: string, time: string, timeZone: string): Date {
+  const naive = Date.parse(`${date}T${time}:00Z`);
   if (Number.isNaN(naive)) return new Date(Number.NaN);
-  const firstOffset = zoneOffsetMs(meeting.timeZone, new Date(naive));
+  const firstOffset = zoneOffsetMs(timeZone, new Date(naive));
   const candidate = naive - firstOffset;
-  const secondOffset = zoneOffsetMs(meeting.timeZone, new Date(candidate));
+  const secondOffset = zoneOffsetMs(timeZone, new Date(candidate));
   return new Date(secondOffset === firstOffset ? candidate : naive - secondOffset);
+}
+
+export function meetingInstant(meeting: Pick<Meeting, "date" | "time" | "timeZone">): Date {
+  return wallTimeInstant(meeting.date, meeting.time, meeting.timeZone);
 }
 
 /* ---------- day helpers ---------- */
@@ -215,6 +239,7 @@ export function remindersFor(meetings: Meeting[], now: Date, hour12: boolean): P
       title: meeting.title,
       body: bodyFor(meeting, instant, hour12),
       sound: meeting.sound,
+      link: meeting.link,
     });
   }
   return reminders.sort((a, b) => a.fireAtMs - b.fireAtMs);

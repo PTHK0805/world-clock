@@ -16,8 +16,11 @@ Built with Tauri 2 + React + TypeScript. No runtime dependencies for time logic 
 - Developer info view (titlebar ⓘ button) that takes over the whole widget — name, website, and email links that open in the default browser or mail app
 - Calendar with meetings — a month grid with dots on days that have meetings, plus the selected day's agenda
 - Every meeting carries its own timezone, shown with your local equivalent (`15:00 GMT-7 · 17:00 your time`)
-- Custom reminder card before a meeting — pick `Off · At start · 1m · 3m · 5m · 10m · 15m · 30m`. It's our own window, not a Windows toast
+- Custom reminder card before a meeting — pick `Off · At start · 1m · 3m · 5m · 10m · 15m · 30m`. It's our own window, not a Windows toast, and it plays a short synthesized chime you can mute per meeting
 - Reminders fire even while the widget is hidden in the tray
+- Meeting links (Google Meet, Zoom, Teams, Webex, Discord and more) show the provider's real favicon, fetched from the meeting's own host, with a one-click **Join**
+- Themed date and time pickers that follow the app's palette and 12/24h setting instead of the OS controls
+- Subscribe to a Google Calendar iCal feed: paste the calendar's secret address and its events appear read-only alongside your own, with all-day entries, Meet links and reminders of their own
 - System tray icon with a right-click menu: Show / Hide, Start with Windows, Quit — left-click toggles the widget
 - No taskbar button (and no Alt+Tab entry) — the widget lives in the tray
 - Starts with Windows by default; untick "Start with Windows" in the tray menu to opt out
@@ -146,6 +149,22 @@ Calendar notes:
   by Chromium, which is exactly when a reminder still has to fire.
 - The reminder card lives in its own `notify` window — the same bundle, routed by
   `?view=notification` — which is why `notify` is listed in the capability's window list.
+
+Google Calendar subscription:
+- In Google Calendar: Settings → your calendar → **"Secret address in iCal format"**, then paste it
+  into the Google Calendar row at the bottom of the calendar view.
+- The feed is fetched through Rust (`tauri-plugin-http`), because Google's iCal host sends no CORS
+  headers. The capability allows exactly one origin, `https://calendar.google.com/*`, so a bad
+  address can't turn the app into a general-purpose fetcher.
+- `src/lib/ical.ts` is a focused RFC 5545 reader: it unfolds lines, understands `TZID`/UTC/all-day
+  stamps, pulls the conference link out of `X-GOOGLE-CONFERENCE`, and expands `DAILY`, `WEEKLY` and
+  simple `MONTHLY` rules (with `INTERVAL`, `BYDAY`, `COUNT`, `UNTIL`, `EXDATE`) across a now→30 day
+  window. Exotic patterns (like "second Tuesday") are counted and reported rather than guessed.
+- Imported events are mapped onto the same `Meeting` model with `source: "google"`, so the month
+  grid, dots, agenda and reminder scheduler all work on them unchanged; the UI just makes them
+  read-only. The feed cache lives under `world-clock:google:v1`.
+- Google caches this feed, so changes can take a while to show up. Refresh happens at launch, every
+  30 minutes, and on demand.
 
 Theming: both palettes live in `src/styles/global.css` — dark is the `:root` default and light is applied via `data-theme="light"` on the widget element, so switching themes only swaps CSS variables.
 

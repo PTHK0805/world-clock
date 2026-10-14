@@ -1,4 +1,5 @@
 import { listTimezones, normalizeZone } from "./timezones";
+import { LEAD_OPTIONS } from "./meetings";
 
 export type ThemeMode = "system" | "light" | "dark";
 
@@ -10,6 +11,10 @@ export interface Settings {
   compact: boolean;
   theme: ThemeMode;
   position: { x: number; y: number } | null;
+  /** Secret iCal address of the subscribed Google calendar, or null. */
+  calendarUrl: string | null;
+  /** Reminder lead applied to imported events; null means none. */
+  calendarLeadMinutes: number | null;
 }
 
 const STORAGE_KEY = "world-clock:v1";
@@ -22,6 +27,8 @@ const DEFAULT_SETTINGS: Settings = {
   compact: false,
   theme: "system",
   position: null,
+  calendarUrl: null,
+  calendarLeadMinutes: 5,
 };
 
 export function loadSettings(): Settings {
@@ -44,6 +51,13 @@ export function loadSettings(): Settings {
         : null;
     const theme: ThemeMode =
       parsed.theme === "light" || parsed.theme === "dark" ? parsed.theme : "system";
+    const calendarUrl =
+      typeof parsed.calendarUrl === "string" && parsed.calendarUrl.trim() !== ""
+        ? parsed.calendarUrl.trim()
+        : null;
+    const lead = parsed.calendarLeadMinutes;
+    const calendarLeadMinutes =
+      lead === null || (typeof lead === "number" && LEAD_OPTIONS.includes(lead)) ? lead : 5;
     return {
       zones: [...new Set(zones)],
       primaryZone,
@@ -52,6 +66,8 @@ export function loadSettings(): Settings {
       compact: parsed.compact === true,
       theme,
       position,
+      calendarUrl,
+      calendarLeadMinutes,
     };
   } catch {
     return DEFAULT_SETTINGS;

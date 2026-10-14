@@ -14,6 +14,7 @@ ReactDOM.createRoot(document.getElementById("root") as HTMLElement).render(
         title={params.get("title") ?? "Meeting"}
         body={params.get("body") ?? ""}
         sound={params.get("sound") !== "0"}
+        link={params.get("link") || null}
       />
     ) : (
       <App />

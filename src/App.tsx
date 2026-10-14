@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { AboutView } from "./components/AboutView";
 import { CalendarView } from "./components/CalendarView";
 import { CompactClock } from "./components/CompactClock";
@@ -14,16 +14,27 @@ import { useUpdater } from "./hooks/useUpdater";
 import { saveSettings } from "./lib/storage";
 import { localZone } from "./lib/timezones";
 import { loadMeetings, remindersFor, saveMeetings, type Meeting } from "./lib/meetings";
+import { clearFeedCache, fetchFeed, loadFeedCache, toMeetings, type FeedCache } from "./lib/gcal";
 import { syncReminders } from "./lib/reminders";
 import { closeWidget, currentPosition, resizeToContent, restorePosition, setPinned } from "./lib/window";
 
 type PickerMode = "list" | "primary" | "about" | "calendar";
+
+const FEED_ERRORS: Record<string, string> = {
+  "bad-url": "That doesn't look like a Google Calendar iCal address.",
+  "not-ical": "That address didn't return a calendar feed.",
+  network: "Couldn't reach Google Calendar. Check your connection.",
+  empty: "Connected, but the feed has no events in the next 30 days.",
+};
 
 function App() {
   const now = useNow();
   const { settings, update } = useSettings();
   const [picker, setPicker] = useState<PickerMode | null>(null);
   const [meetings, setMeetings] = useState<Meeting[]>(loadMeetings);
+  const [feed, setFeed] = useState<FeedCache | null>(() => loadFeedCache());
+  const [syncing, setSyncing] = useState(false);
+  const [syncError, setSyncError] = useState<string | null>(null);
   const widgetRef = useRef<HTMLDivElement>(null);
   const resolvedTheme = useResolvedTheme(settings.theme);
   const updater = useUpdater();
@@ -80,12 +91,40 @@ function App() {
     };
   }, []);
 
+  const refreshFeed = useCallback(async () => {
+    if (!settings.calendarUrl) return;
+    setSyncing(true);
+    const outcome = await fetchFeed(settings.calendarUrl);
+    setSyncing(false);
+    if (outcome.ok) {
+      setFeed(outcome.cache);
+      setSyncError(null);
+    } else {
+      setSyncError(FEED_ERRORS[outcome.reason] ?? "Couldn't read that calendar.");
+    }
+  }, [settings.calendarUrl]);
+
+  useEffect(() => {
+    if (!settings.calendarUrl) return;
+    void refreshFeed();
+    const timer = window.setInterval(() => void refreshFeed(), 30 * 60_000);
+    return () => window.clearInterval(timer);
+  }, [refreshFeed, settings.calendarUrl]);
+
+  // imported events join the local list so the grid, the dots and the reminders
+  // all work on them without a parallel code path
+  const googleMeetings = useMemo(
+    () => (feed ? toMeetings(feed, settings.calendarLeadMinutes) : []),
+    [feed, settings.calendarLeadMinutes],
+  );
+  const allMeetings = useMemo(() => [...meetings, ...googleMeetings], [meetings, googleMeetings]);
+
   useEffect(() => {
     saveMeetings(meetings);
     // hand the upcoming reminders to the Rust scheduler, which fires them even
     // while the widget sits hidden in the tray
-    void syncReminders(remindersFor(meetings, new Date(), settings.hour12));
-  }, [meetings, settings.hour12]);
+    void syncReminders(remindersFor(allMeetings, new Date(), settings.hour12));
+  }, [meetings, allMeetings, settings.hour12]);
 
   const saveMeeting = useCallback((meeting: Meeting) => {
     setMeetings((current) => {
@@ -174,10 +213,31 @@ function App() {
           />
           {picker === "calendar" ? (
             <CalendarView
-              meetings={meetings}
+              meetings={allMeetings}
               zones={settings.zones}
               heroZone={heroZone}
               hour12={settings.hour12}
+              google={{
+                url: settings.calendarUrl,
+                leadMinutes: settings.calendarLeadMinutes,
+                fetchedAt: feed?.fetchedAt ?? null,
+                unexpandedSeries: feed?.unexpandedSeries ?? 0,
+                eventCount: feed?.events.length ?? 0,
+                syncing,
+                error: syncError,
+                onSubscribe: (url) => {
+                  setSyncError(null);
+                  update({ calendarUrl: url.trim() });
+                },
+                onLead: (lead) => update({ calendarLeadMinutes: lead }),
+                onRefresh: () => void refreshFeed(),
+                onDisconnect: () => {
+                  clearFeedCache();
+                  setFeed(null);
+                  setSyncError(null);
+                  update({ calendarUrl: null });
+                },
+              }}
               onSave={saveMeeting}
               onDelete={deleteMeeting}
               onClose={() => setPicker(null)}

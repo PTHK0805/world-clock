@@ -1,8 +1,10 @@
 import { useMemo, useState } from "react";
 import { cityLabel, localZone, offsetLabel, searchZones } from "../lib/timezones";
 import { LEAD_OPTIONS, leadLongLabel, leadLabel, meetingInstant, todayKey, type Meeting } from "../lib/meetings";
-import { BellIcon, CalendarIcon, ChevronLeftIcon, ClockIcon, SpeakerIcon, TrashIcon } from "./icons";
+import { normalizeLink, providerFor } from "../lib/links";
+import { BellIcon, CalendarIcon, ChevronLeftIcon, ClockIcon, LinkIcon, SpeakerIcon, TrashIcon } from "./icons";
 import { MonthGrid, partsFromKey, shortDateLabel } from "./MonthGrid";
+import { ProviderIcon } from "./ProviderIcon";
 import { TimePicker, formatTime } from "./TimePicker";
 
 interface MeetingFormProps {
@@ -38,6 +40,7 @@ export function MeetingForm({
   const [timeZone, setTimeZone] = useState(draft.timeZone);
   const [leadMinutes, setLeadMinutes] = useState<number | null>(draft.leadMinutes);
   const [sound, setSound] = useState(draft.sound);
+  const [link, setLink] = useState(draft.link ?? "");
   const [zoneSearch, setZoneSearch] = useState("");
   const [open, setOpen] = useState<OpenPicker>(null);
   const [cursor, setCursor] = useState(() => {
@@ -62,6 +65,8 @@ export function MeetingForm({
   }, [zoneSearch]);
 
   const instant = meetingInstant({ date, time, timeZone });
+  const normalizedLink = normalizeLink(link);
+  const linkProvider = providerFor(normalizedLink);
   const localPreview =
     timeZone === local
       ? null
@@ -99,6 +104,7 @@ export function MeetingForm({
       timeZone,
       leadMinutes,
       sound,
+      link: normalizedLink,
     });
   };
 
@@ -211,6 +217,25 @@ export function MeetingForm({
           </button>
         )}
       </div>
+
+      <div className="form__link">
+        <span className="form__link-icon">
+          <LinkIcon size={14} />
+        </span>
+        <input
+          className="form__input form__input--link"
+          value={link}
+          onChange={(event) => setLink(event.currentTarget.value)}
+          placeholder="Meeting link (optional)"
+          spellCheck={false}
+        />
+      </div>
+      {link.trim() !== "" &&
+        (normalizedLink && linkProvider ? (
+          <ProviderIcon provider={linkProvider} link={normalizedLink} />
+        ) : (
+          <p className="form__hint">That doesn&apos;t look like a web link.</p>
+        ))}
 
       <div className="form__reminder">
         <div className="form__reminder-head">
