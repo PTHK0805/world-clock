@@ -232,6 +232,27 @@ export function CalendarIcon({ size = 15 }: IconProps) {
   );
 }
 
+export function RepeatIcon({ size = 13 }: IconProps) {
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.9"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <path d="M17 3.5 20 6l-3 2.5" />
+      <path d="M20 6H8a4 4 0 0 0-4 4v1" />
+      <path d="M7 20.5 4 18l3-2.5" />
+      <path d="M4 18h12a4 4 0 0 0 4-4v-1" />
+    </svg>
+  );
+}
+
 export function CloudCalendarIcon({ size = 13 }: IconProps) {
   return (
     <svg

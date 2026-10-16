@@ -1372,6 +1372,52 @@ input {
   gap: 6px;
 }
 
+.form__repeat {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.form__interval {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.form__interval-label {
+  font-size: 11px;
+  color: var(--faint);
+}
+
+.form__weekdays {
+  display: flex;
+  gap: 4px;
+}
+
+.form__weekday {
+  flex: 1;
+  padding: 6px 0;
+  border: 1px solid var(--stroke);
+  border-radius: 8px;
+  background: transparent;
+  color: var(--muted);
+  font-size: 11.5px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.12s ease, border-color 0.12s ease, color 0.12s ease;
+}
+
+.form__weekday:hover {
+  background: var(--panel);
+  color: var(--text);
+}
+
+.form__weekday--active {
+  border-color: var(--accent-line);
+  background: var(--accent-soft);
+  color: var(--accent-text);
+}
+
 .form__link {
   display: flex;
   align-items: center;
@@ -1469,6 +1515,115 @@ input {
   margin: 0;
   font-size: 11.5px;
   color: var(--danger);
+}
+
+/* ---------- modal dialog ---------- */
+
+/* the widget is the containing block, so the overlay covers it and inherits its rounded
+   corners from the existing overflow clipping */
+.widget {
+  position: relative;
+}
+
+.dialog {
+  position: absolute;
+  inset: 0;
+  z-index: 20;
+  display: grid;
+  place-items: center;
+  padding: 16px;
+  animation: dialog-in 0.16s ease-out;
+}
+
+.dialog__backdrop {
+  position: absolute;
+  inset: 0;
+  padding: 0;
+  border: 0;
+  background: rgba(4, 6, 12, 0.55);
+  cursor: default;
+}
+
+.dialog__card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: 100%;
+  max-width: 300px;
+  padding: 16px;
+  border: 1px solid var(--stroke);
+  border-radius: 14px;
+  background: linear-gradient(165deg, var(--bg-top) 0%, var(--bg-bottom) 100%);
+  box-shadow: 0 18px 40px rgba(0, 0, 0, 0.45);
+}
+
+.dialog__title {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.dialog__text {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--muted);
+}
+
+.dialog__text strong {
+  font-weight: 600;
+  color: var(--text);
+}
+
+.dialog__actions {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 2px;
+}
+
+.dialog__button {
+  padding: 9px 12px;
+  border: 1px solid var(--stroke);
+  border-radius: 10px;
+  background: transparent;
+  color: var(--text);
+  font-size: 12.5px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.12s ease, border-color 0.12s ease;
+}
+
+.dialog__button:hover {
+  background: var(--panel);
+}
+
+.dialog__button--primary {
+  border-color: var(--accent-line);
+  background: var(--accent-soft);
+  color: var(--accent-text);
+}
+
+.dialog__button--primary:hover {
+  border-color: var(--accent-line-strong);
+  background: var(--accent-hover);
+}
+
+.dialog__button--danger {
+  border-color: var(--danger);
+  color: var(--danger);
+}
+
+@keyframes dialog-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
 }
 
 .form__save {

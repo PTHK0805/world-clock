@@ -1,5 +1,18 @@
-import { clockParts, listTimezones, localZone, normalizeZone, offsetLabel } from "./timezones";
+import { clockParts, listTimezones, localZone, normalizeZone, offsetLabel, wallTimeInstant } from "./timezones";
 import { normalizeLink } from "./links";
+import { occurrenceDates, type Rule, type WallTime } from "./recurrence";
+
+export interface RecurrenceRule {
+  freq: "DAILY" | "WEEKLY" | "MONTHLY";
+  /** Every N days/weeks/months. */
+  interval: number;
+  /** Weekly only: 0 = Sunday. */
+  byDay: number[];
+  /** Inclusive last date, `YYYY-MM-DD`, or null for no end. */
+  until: string | null;
+  /** Individual dates removed from the series, `YYYY-MM-DD`. */
+  skippedDates: string[];
+}
 
 export interface Meeting {
   id: string;
@@ -19,6 +32,10 @@ export interface Meeting {
   source: "local" | "google";
   /** All-day entries from a feed, shown without a time and without a reminder. */
   allDay: boolean;
+  /** Set when the meeting repeats; the stored entry is the series. */
+  recurrence: RecurrenceRule | null;
+  /** For a generated occurrence, the id of the series it came from. */
+  seriesId: string | null;
 }
 
 export interface PendingReminder {
@@ -78,6 +95,27 @@ function sanitize(raw: unknown): Meeting | null {
     link: normalizeLink(value.link),
     source: value.source === "google" ? "google" : "local",
     allDay: value.allDay === true,
+    recurrence: sanitizeRule(value.recurrence),
+    seriesId: typeof value.seriesId === "string" && value.seriesId !== "" ? value.seriesId : null,
+  };
+}
+
+function sanitizeRule(raw: unknown): RecurrenceRule | null {
+  if (!raw || typeof raw !== "object") return null;
+  const value = raw as Partial<RecurrenceRule>;
+  if (value.freq !== "DAILY" && value.freq !== "WEEKLY" && value.freq !== "MONTHLY") return null;
+  const days = Array.isArray(value.byDay) ? value.byDay : [];
+  return {
+    freq: value.freq,
+    interval: Math.min(99, Math.max(1, Math.round(Number(value.interval) || 1))),
+    byDay:
+      value.freq === "WEEKLY"
+        ? [...new Set(days.filter((day) => Number.isInteger(day) && day >= 0 && day <= 6))]
+        : [],
+    until: typeof value.until === "string" && DATE_PATTERN.test(value.until) ? value.until : null,
+    skippedDates: Array.isArray(value.skippedDates)
+      ? [...new Set(value.skippedDates.filter((date): date is string => typeof date === "string" && DATE_PATTERN.test(date)))]
+      : [],
   };
 }
 
@@ -113,6 +151,8 @@ export function newMeeting(date: string, timeZone: string, time?: string): Meeti
     link: null,
     source: "local",
     allDay: false,
+    recurrence: null,
+    seriesId: null,
   };
 }
 
@@ -124,59 +164,61 @@ function currentWallTime(timeZone: string): string {
 
 /* ---------- wall time -> absolute instant ---------- */
 
-const partsFormatters = new Map<string, Intl.DateTimeFormat>();
-
-function partsFormatter(timeZone: string): Intl.DateTimeFormat {
-  let formatter = partsFormatters.get(timeZone);
-  if (!formatter) {
-    formatter = new Intl.DateTimeFormat("en-US", {
-      timeZone,
-      hourCycle: "h23",
-      year: "numeric",
-      month: "2-digit",
-      day: "2-digit",
-      hour: "2-digit",
-      minute: "2-digit",
-      second: "2-digit",
-    });
-    partsFormatters.set(timeZone, formatter);
-  }
-  return formatter;
+export function meetingInstant(meeting: Pick<Meeting, "date" | "time" | "timeZone">): Date {
+  return wallTimeInstant(meeting.date, meeting.time, meeting.timeZone);
 }
 
-/** Offset of the zone at that instant, in milliseconds (east of UTC positive). */
-function zoneOffsetMs(timeZone: string, instant: Date): number {
-  const parts = partsFormatter(timeZone).formatToParts(instant);
-  const pick = (type: Intl.DateTimeFormatPartTypes) =>
-    Number(parts.find((part) => part.type === type)?.value ?? 0);
-  const asUtc = Date.UTC(
-    pick("year"),
-    pick("month") - 1,
-    pick("day"),
-    pick("hour"),
-    pick("minute"),
-    pick("second"),
-  );
-  const wholeSeconds = Math.floor(instant.getTime() / 1000) * 1000;
-  return asUtc - wholeSeconds;
+/* ---------- recurrence ---------- */
+
+/** Bridges a stored rule to the expander's shape; null when the meeting doesn't repeat. */
+function ruleFromMeeting(meeting: Meeting): Rule | null {
+  const recurrence = meeting.recurrence;
+  if (!recurrence) return null;
+  return {
+    freq: recurrence.freq,
+    interval: Math.max(1, recurrence.interval),
+    byDay: recurrence.freq === "WEEKLY" ? recurrence.byDay : [],
+    byMonthDay: [],
+    count: null,
+    // the end date is inclusive, so compare against the last minute of that local day
+    until: recurrence.until ? wallTimeInstant(recurrence.until, "23:59", meeting.timeZone) : null,
+    supported: true,
+  };
 }
 
 /**
- * Turns a wall-clock date/time in a specific timezone into an absolute instant.
- * A second pass re-reads the offset at the resulting instant so that times set
- * across a DST change still land on the intended local time.
+ * Expands repeating meetings into individual occurrences inside the window. Meetings that
+ * don't repeat pass through untouched, so a caller can hand over a whole list. Occurrences
+ * carry a `seriesId` back to the stored series and clear `recurrence`, so an already
+ * expanded list can never be expanded a second time.
  */
-export function wallTimeInstant(date: string, time: string, timeZone: string): Date {
-  const naive = Date.parse(`${date}T${time}:00Z`);
-  if (Number.isNaN(naive)) return new Date(Number.NaN);
-  const firstOffset = zoneOffsetMs(timeZone, new Date(naive));
-  const candidate = naive - firstOffset;
-  const secondOffset = zoneOffsetMs(timeZone, new Date(candidate));
-  return new Date(secondOffset === firstOffset ? candidate : naive - secondOffset);
-}
-
-export function meetingInstant(meeting: Pick<Meeting, "date" | "time" | "timeZone">): Date {
-  return wallTimeInstant(meeting.date, meeting.time, meeting.timeZone);
+export function expandMeetings(meetings: Meeting[], from: Date, to: Date): Meeting[] {
+  const expanded: Meeting[] = [];
+  for (const meeting of meetings) {
+    const rule = ruleFromMeeting(meeting);
+    if (!rule) {
+      expanded.push(meeting);
+      continue;
+    }
+    const start: WallTime = { date: meeting.date, time: meeting.time, timeZone: meeting.timeZone };
+    const skipped = new Set(
+      (meeting.recurrence?.skippedDates ?? []).map((date) =>
+        wallTimeInstant(date, meeting.time, meeting.timeZone).getTime(),
+      ),
+    );
+    for (const date of occurrenceDates(start, rule, skipped, from, to)) {
+      const instant = wallTimeInstant(date, meeting.time, meeting.timeZone);
+      if (Number.isNaN(instant.getTime())) continue;
+      expanded.push({
+        ...meeting,
+        id: `${meeting.id}@${instant.getTime()}`,
+        date,
+        seriesId: meeting.id,
+        recurrence: null,
+      });
+    }
+  }
+  return expanded;
 }
 
 /* ---------- day helpers ---------- */

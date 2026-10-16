@@ -13,7 +13,7 @@ import { useResolvedTheme, nextThemeMode } from "./hooks/useTheme";
 import { useUpdater } from "./hooks/useUpdater";
 import { saveSettings } from "./lib/storage";
 import { localZone } from "./lib/timezones";
-import { loadMeetings, remindersFor, saveMeetings, type Meeting } from "./lib/meetings";
+import { expandMeetings, loadMeetings, remindersFor, saveMeetings, type Meeting } from "./lib/meetings";
 import { clearFeedCache, fetchFeed, loadFeedCache, toMeetings, type FeedCache } from "./lib/gcal";
 import { syncReminders } from "./lib/reminders";
 import { closeWidget, currentPosition, resizeToContent, restorePosition, setPinned } from "./lib/window";
@@ -135,9 +135,12 @@ function App() {
 
   useEffect(() => {
     saveMeetings(meetings);
-    // hand the upcoming reminders to the Rust scheduler, which fires them even
-    // while the widget sits hidden in the tray
-    void syncReminders(remindersFor(allMeetings, new Date(), settings.hour12));
+    // a repeating meeting is stored as one series, so expand the upcoming month before
+    // deriving reminders, then hand them to the Rust scheduler (which fires them even
+    // while the widget sits hidden in the tray)
+    const now = new Date();
+    const upcoming = expandMeetings(allMeetings, now, new Date(now.getTime() + 30 * 86_400_000));
+    void syncReminders(remindersFor(upcoming, now, settings.hour12));
   }, [meetings, allMeetings, settings.hour12]);
 
   const saveMeeting = useCallback((meeting: Meeting) => {

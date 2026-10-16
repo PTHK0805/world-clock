@@ -265,3 +265,56 @@ export function searchZones(query: string, limit = 60): string[] {
   }
   return [...starts, ...contains].slice(0, limit);
 }
+
+/* ---------- wall clock -> absolute instant ---------- */
+
+const wallFormatters = new Map<string, Intl.DateTimeFormat>();
+
+function wallFormatter(timeZone: string): Intl.DateTimeFormat {
+  let formatter = wallFormatters.get(timeZone);
+  if (!formatter) {
+    formatter = new Intl.DateTimeFormat("en-US", {
+      timeZone,
+      hourCycle: "h23",
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit",
+      second: "2-digit",
+    });
+    wallFormatters.set(timeZone, formatter);
+  }
+  return formatter;
+}
+
+/** Offset of the zone at that instant, in milliseconds (east of UTC positive). */
+function zoneOffsetMs(timeZone: string, instant: Date): number {
+  const parts = wallFormatter(timeZone).formatToParts(instant);
+  const pick = (type: Intl.DateTimeFormatPartTypes) =>
+    Number(parts.find((part) => part.type === type)?.value ?? 0);
+  const asUtc = Date.UTC(
+    pick("year"),
+    pick("month") - 1,
+    pick("day"),
+    pick("hour"),
+    pick("minute"),
+    pick("second"),
+  );
+  const wholeSeconds = Math.floor(instant.getTime() / 1000) * 1000;
+  return asUtc - wholeSeconds;
+}
+
+/**
+ * Turns a wall-clock date/time in a specific timezone into an absolute instant.
+ * A second pass re-reads the offset at the resulting instant so that times set
+ * across a DST change still land on the intended local time.
+ */
+export function wallTimeInstant(date: string, time: string, timeZone: string): Date {
+  const naive = Date.parse(`${date}T${time}:00Z`);
+  if (Number.isNaN(naive)) return new Date(Number.NaN);
+  const firstOffset = zoneOffsetMs(timeZone, new Date(naive));
+  const candidate = naive - firstOffset;
+  const secondOffset = zoneOffsetMs(timeZone, new Date(candidate));
+  return new Date(secondOffset === firstOffset ? candidate : naive - secondOffset);
+}

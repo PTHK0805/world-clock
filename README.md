@@ -20,6 +20,7 @@ Built with Tauri 2 + React + TypeScript. No runtime dependencies for time logic 
 - Reminders fire even while the widget is hidden in the tray
 - Meeting links (Google Meet, Zoom, Teams, Webex, Discord and more) show the provider's real favicon, fetched from the meeting's own host, with a one-click **Join**
 - Themed date and time pickers that follow the app's palette and 12/24h setting instead of the OS controls
+- Repeating meetings: every day, every N days/weeks/months, or weekly on chosen weekdays, with an optional end date. Occurrences show on the right days and each gets its own reminder; editing any occurrence edits the whole series, and deleting asks whether you mean that occurrence or every one
 - Subscribe to a Google Calendar iCal feed: paste the calendar's secret address and its events appear read-only alongside your own, with all-day entries, Meet links and reminders of their own
 - System tray icon with a right-click menu: Show / Hide, Start with Windows, Quit — left-click toggles the widget
 - No taskbar button (and no Alt+Tab entry) — the widget lives in the tray
@@ -161,6 +162,11 @@ Google Calendar subscription:
   stamps, pulls the conference link out of `X-GOOGLE-CONFERENCE`, and expands `DAILY`, `WEEKLY` and
   simple `MONTHLY` rules (with `INTERVAL`, `BYDAY`, `COUNT`, `UNTIL`, `EXDATE`) across a now→30 day
   window. Exotic patterns (like "second Tuesday") are counted and reported rather than guessed.
+  Edited instances of a series (`RECURRENCE-ID`) replace their original slot instead of duplicating it.
+- `src/lib/recurrence.ts` holds that expander, shared with repeating meetings: a local series is
+  stored once with its rule and expanded at the edges — the calendar expands the visible month,
+  and `App` expands a now→30 day window before deriving reminders. Occurrences carry a `seriesId`
+  back to the series and clear their rule, so an expanded list can never be expanded twice.
 - Imported events are mapped onto the same `Meeting` model with `source: "google"`, so the month
   grid, dots, agenda and reminder scheduler all work on them unchanged; the UI just makes them
   read-only. The feed cache lives under `world-clock:google:v1`.

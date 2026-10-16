@@ -101,5 +101,8 @@ export function toMeetings(cache: FeedCache, leadMinutes: number | null): Meetin
     link: event.link,
     source: "google" as const,
     allDay: event.allDay,
+    // imported feeds arrive already expanded, so they carry no rule of their own
+    recurrence: null,
+    seriesId: null,
   }));
 }

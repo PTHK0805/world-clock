@@ -3,6 +3,7 @@ import { cityLabel, clockParts, localZone, offsetLabel } from "../lib/timezones"
 import {
   LEAD_OPTIONS,
   agendaFor,
+  expandMeetings,
   leadLabel,
   leadLongLabel,
   meetingDates,
@@ -18,7 +19,7 @@ import { ExternalEventCard } from "./ExternalEventCard";
 import { MeetingForm } from "./MeetingForm";
 import { MonthGrid, partsFromKey, ymdFromOffset } from "./MonthGrid";
 import { ProviderIcon } from "./ProviderIcon";
-import { BellIcon, CloudCalendarIcon, CloseIcon, PlusIcon, RefreshIcon } from "./icons";
+import { BellIcon, CloudCalendarIcon, CloseIcon, PlusIcon, RefreshIcon, RepeatIcon } from "./icons";
 
 export interface GoogleSync {
   url: string | null;
@@ -84,13 +85,31 @@ export function CalendarView({
     const [year, month] = partsFromKey(today);
     return { year, month };
   });
-  const [editing, setEditing] = useState<{ meeting: Meeting; mode: "new" | "edit" } | null>(null);
+  const [editing, setEditing] = useState<{
+    meeting: Meeting;
+    mode: "new" | "edit";
+    occurrenceDate: string | null;
+  } | null>(null);
   const [viewing, setViewing] = useState<Meeting | null>(null);
   const [panelOpen, setPanelOpen] = useState(false);
   const [draftUrl, setDraftUrl] = useState(google.url ?? "");
 
-  const marked = useMemo(() => meetingDates(meetings), [meetings]);
-  const agenda = useMemo(() => agendaFor(meetings, selected), [meetings, selected]);
+  // repeating meetings are stored once and expanded across the visible month, with a week
+  // of padding so the grid's leading and trailing cells are covered too
+  const visible = useMemo(() => {
+    const start = new Date(Date.UTC(cursor.year, cursor.month, 1) - 7 * 86_400_000);
+    const end = new Date(Date.UTC(cursor.year, cursor.month + 1, 0) + 8 * 86_400_000);
+    return expandMeetings(meetings, start, end);
+  }, [meetings, cursor]);
+
+  const marked = useMemo(() => meetingDates(visible), [visible]);
+  const agenda = useMemo(() => agendaFor(visible, selected), [visible, selected]);
+
+  /** Occurrences are edited through the series they belong to. */
+  const seriesFor = (meeting: Meeting) =>
+    meeting.seriesId
+      ? (meetings.find((candidate) => candidate.id === meeting.seriesId) ?? meeting)
+      : meeting;
 
   // the widget sizes itself to its content, so a busy day would push the window off
   // the screen; cap the list and let it scroll instead
@@ -101,7 +120,7 @@ export function CalendarView({
 
   const openNew = () => {
     setViewing(null);
-    setEditing({ meeting: newMeeting(selected, heroZone), mode: "new" });
+    setEditing({ meeting: newMeeting(selected, heroZone), mode: "new", occurrenceDate: null });
   };
 
   if (editing) {
@@ -109,13 +128,15 @@ export function CalendarView({
       <MeetingForm
         draft={editing.meeting}
         mode={editing.mode}
+        occurrenceDate={editing.occurrenceDate}
         zones={zones}
         heroZone={heroZone}
         hour12={hour12}
         marked={marked}
         onSave={(meeting) => {
           onSave(meeting);
-          setSelected(meeting.date);
+          // stay on the day the user was looking at, which is the occurrence they came from
+          setSelected(editing.occurrenceDate ?? meeting.date);
           setEditing(null);
         }}
         onCancel={() => setEditing(null)}
@@ -177,7 +198,12 @@ export function CalendarView({
                   className="cal__row-main"
                   onClick={() => {
                     if (imported) setViewing(meeting);
-                    else setEditing({ meeting, mode: "edit" });
+                    else
+                      setEditing({
+                        meeting: seriesFor(meeting),
+                        mode: "edit",
+                        occurrenceDate: meeting.seriesId ? meeting.date : null,
+                      });
                   }}
                 >
                   <span className="cal__row-time">{meeting.allDay ? "All day" : meeting.time}</span>
@@ -186,6 +212,11 @@ export function CalendarView({
                       {imported && (
                         <span className="cal__row-source" title="From Google Calendar">
                           <CloudCalendarIcon size={10} />
+                        </span>
+                      )}
+                      {meeting.seriesId && (
+                        <span className="cal__row-source" title="Repeating meeting">
+                          <RepeatIcon size={10} />
                         </span>
                       )}
                       {meeting.title}
