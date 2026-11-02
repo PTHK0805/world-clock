@@ -188,3 +188,7 @@ Theming: both palettes live in `src/styles/global.css` — dark is the `:root` d
 - The tray icon and its menu are built in Rust (`src-tauri/src/lib.rs`) with Tauri's built-in tray API; autostart uses `tauri-plugin-autostart`, which writes `HKCU\Software\Microsoft\Windows\CurrentVersion\Run`.
 - Autostart is enabled on first run. Turning it off from the tray writes an `autostart-optout` marker into the app config directory so the next launch does not switch it back on.
 - `skipTaskbar` is applied through the `ITaskbarList` COM API (not window styles), so the taskbar button disappears while `WS_EX_APPWINDOW` stays set — check the actual taskbar, not the ex-style, when testing.
+
+## License
+
+MIT © 2026 Phyo Thiha Kyaw — see [LICENSE](LICENSE).
