@@ -18,6 +18,7 @@ export interface Settings {
 }
 
 const STORAGE_KEY = "world-clock:v1";
+const TOUR_KEY = "world-clock:tour:v1";
 
 const DEFAULT_SETTINGS: Settings = {
   zones: [],
@@ -79,5 +80,22 @@ export function saveSettings(settings: Settings): void {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(settings));
   } catch {
     // storage unavailable: settings simply won't persist
+  }
+}
+
+/** The tour is shown once; a storage failure counts as seen so it cannot nag on every launch. */
+export function hasSeenTour(): boolean {
+  try {
+    return localStorage.getItem(TOUR_KEY) === "done";
+  } catch {
+    return true;
+  }
+}
+
+export function markTourSeen(): void {
+  try {
+    localStorage.setItem(TOUR_KEY, "done");
+  } catch {
+    // storage unavailable: the tour may show again next launch
   }
 }

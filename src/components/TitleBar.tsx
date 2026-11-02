@@ -50,6 +50,7 @@ export function TitleBar({
           onClick={onCalendar}
           title="Calendar and meetings"
           aria-pressed={calendarActive}
+          data-tour="calendar"
         >
           <CalendarIcon />
         </button>
@@ -59,6 +60,7 @@ export function TitleBar({
           onClick={onInfo}
           title={updateAvailable ? "Developer info — update available" : "Developer info"}
           aria-pressed={infoActive}
+          data-tour="info"
         >
           <InfoIcon />
         </button>
@@ -67,10 +69,17 @@ export function TitleBar({
           className={`icon-btn${themeMode !== "system" ? " icon-btn--active" : ""}`}
           onClick={onCycleTheme}
           title={themeLabel(themeMode, resolvedTheme)}
+          data-tour="theme"
         >
           <ThemeIcon mode={themeMode} />
         </button>
-        <button type="button" className="icon-btn" onClick={onCompact} title="Compact mode — time only">
+        <button
+          type="button"
+          className="icon-btn"
+          onClick={onCompact}
+          title="Compact mode — time only"
+          data-tour="compact"
+        >
           <CompactIcon />
         </button>
         <button
@@ -79,10 +88,17 @@ export function TitleBar({
           onClick={onTogglePin}
           title={pinned ? "Unpin from top" : "Keep on top of other windows"}
           aria-pressed={pinned}
+          data-tour="pin"
         >
           <PinIcon />
         </button>
-        <button type="button" className="icon-btn icon-btn--danger" onClick={onClose} title="Close">
+        <button
+          type="button"
+          className="icon-btn icon-btn--danger"
+          onClick={onClose}
+          title="Close"
+          data-tour="close"
+        >
           <CloseIcon />
         </button>
       </div>

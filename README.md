@@ -13,6 +13,7 @@ Built with Tauri 2 + React + TypeScript. No runtime dependencies for time logic 
 - Frameless, draggable window that resizes itself to fit its content
 - Compact mode: a small pill showing only the time (click the titlebar icon to switch). Click the pill to expand it again, drag it to move it
 - Light, dark, and follow-Windows themes — the titlebar theme button cycles system → light → dark
+- First-run spotlight tour that explains each toolbar button, the main clock, adding timezones and the format toggle — replay it from the About screen
 - Developer info view (titlebar ⓘ button) that takes over the whole widget — name, website, and email links that open in the default browser or mail app
 - Calendar with meetings — a month grid with dots on days that have meetings, plus the selected day's agenda
 - Every meeting carries its own timezone, shown with your local equivalent (`15:00 GMT-7 · 17:00 your time`)
@@ -131,7 +132,7 @@ This produces `World Clock_<version>_x64-setup.exe` plus a matching `.sig` next 
 ```
 src/
   components/    TitleBar, HeroClock, ZoneList, ZoneRow, ZonePickerPanel, CompactClock,
-                 CalendarView, MeetingForm, NotificationCard, AboutView, Footer, icons
+                 CalendarView, MeetingForm, NotificationCard, AboutView, Onboarding, Footer, icons
   hooks/         useNow (second-aligned tick), useSettings (persisted state),
                  useTheme (system/light/dark), useUpdater
   lib/           timezones (Intl formatting/search), meetings (model + instant maths),

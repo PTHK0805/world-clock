@@ -4,6 +4,7 @@ import { CalendarView } from "./components/CalendarView";
 import { CompactClock } from "./components/CompactClock";
 import { Footer } from "./components/Footer";
 import { HeroClock } from "./components/HeroClock";
+import { Onboarding } from "./components/Onboarding";
 import { TitleBar } from "./components/TitleBar";
 import { ZoneList } from "./components/ZoneList";
 import { ZonePickerPanel } from "./components/ZonePickerPanel";
@@ -11,7 +12,7 @@ import { useNow } from "./hooks/useNow";
 import { useSettings } from "./hooks/useSettings";
 import { useResolvedTheme, nextThemeMode } from "./hooks/useTheme";
 import { useUpdater } from "./hooks/useUpdater";
-import { saveSettings } from "./lib/storage";
+import { hasSeenTour, markTourSeen, saveSettings } from "./lib/storage";
 import { localZone } from "./lib/timezones";
 import { expandMeetings, loadMeetings, remindersFor, saveMeetings, type Meeting } from "./lib/meetings";
 import { clearFeedCache, fetchFeed, loadFeedCache, toMeetings, type FeedCache } from "./lib/gcal";
@@ -38,6 +39,7 @@ function App() {
   const widgetRef = useRef<HTMLDivElement>(null);
   const resolvedTheme = useResolvedTheme(settings.theme);
   const updater = useUpdater();
+  const [tourDone, setTourDone] = useState(hasSeenTour);
 
   const localTimeZone = localZone();
   const heroZone = settings.primaryZone ?? localTimeZone;
@@ -199,6 +201,16 @@ function App() {
     await closeWidget();
   }, [settings]);
 
+  const finishTour = useCallback(() => {
+    markTourSeen();
+    setTourDone(true);
+  }, []);
+
+  const replayTour = useCallback(() => {
+    setPicker(null);
+    setTourDone(false);
+  }, []);
+
   return (
     <div
       className={`widget${settings.compact ? " widget--compact" : ""}`}
@@ -260,7 +272,7 @@ function App() {
               onClose={() => setPicker(null)}
             />
           ) : picker === "about" ? (
-            <AboutView onClose={() => setPicker(null)} updater={updater} />
+            <AboutView onClose={() => setPicker(null)} onShowTour={replayTour} updater={updater} />
           ) : (
             <>
               <div className="widget__body">
@@ -313,6 +325,7 @@ function App() {
           )}
         </>
       )}
+      {!tourDone && !settings.compact && <Onboarding onDone={finishTour} />}
     </div>
   );
 }

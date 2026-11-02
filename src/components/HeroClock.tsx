@@ -20,6 +20,7 @@ export function HeroClock({ timeZone, isLocal, now, hour12, onPickZone }: HeroCl
           className="hero__zone"
           onClick={onPickZone}
           title="Change the main clock timezone"
+          data-tour="hero-zone"
         >
           {cityLabel(timeZone)}
           <ChevronDownIcon />

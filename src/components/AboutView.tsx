@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { getVersion } from "@tauri-apps/api/app";
-import { CloseIcon, ExternalLinkIcon, GlobeIcon, MailIcon, RefreshIcon } from "./icons";
+import { CloseIcon, ExternalLinkIcon, GlobeIcon, InfoIcon, MailIcon, RefreshIcon } from "./icons";
 import { openExternal } from "../lib/window";
 import type { Updater } from "../hooks/useUpdater";
 
@@ -13,10 +13,11 @@ const DEVELOPER = {
 
 interface AboutViewProps {
   onClose: () => void;
+  onShowTour: () => void;
   updater: Updater;
 }
 
-export function AboutView({ onClose, updater }: AboutViewProps) {
+export function AboutView({ onClose, onShowTour, updater }: AboutViewProps) {
   const [appVersion, setAppVersion] = useState("");
   const { status, version, progress, checkForUpdates, restart } = updater;
 
@@ -90,6 +91,17 @@ export function AboutView({ onClose, updater }: AboutViewProps) {
             <span className="about__link-open">
               <ExternalLinkIcon />
             </span>
+          </button>
+          <button
+            type="button"
+            className="about__link"
+            onClick={onShowTour}
+            title="Replay the guided tour"
+          >
+            <span className="about__link-icon">
+              <InfoIcon />
+            </span>
+            <span className="about__link-text">Show the guided tour</span>
           </button>
         </div>
 
