@@ -1,4 +1,4 @@
-# World Clock
+# Meridian
 
 A lightweight always-on-top desktop clock widget for Windows: a frameless draggable card showing local time plus any number of extra timezones.
 
@@ -53,8 +53,16 @@ npm run tauri build
 ```
 
 Output lands in `src-tauri/target/release/bundle/`:
-- `nsis/World Clock_<version>_x64-setup.exe` (~1.4 MB)
-- `msi/World Clock_<version>_x64_en-US.msi` (~2.1 MB)
+- `nsis/Meridian_<version>_x64-setup.exe` (~1.4 MB)
+- `msi/Meridian_<version>_x64_en-US.msi` (~2.1 MB)
+
+App icons are generated from `src-tauri/icons/meridian-icon.svg`:
+
+```bash
+npx tauri icon src-tauri/icons/meridian-icon.svg
+```
+
+This overwrites the PNG/ICO/ICNS files in `src-tauri/icons/`; edit the SVG, not the generated files.
 
 ## Releasing a new version
 
@@ -63,9 +71,29 @@ the installers, and the version shown in the About view (`tauri.conf.json` reads
 via `"version": "../package.json"`). Update `version` in `src-tauri/Cargo.toml` too
 so the Rust crate stays in step, then rebuild.
 
-The MSI upgrade code is derived from the product name, so it stays stable across
-versions and Windows treats a new build as an upgrade of the same app rather than a
-second copy.
+The MSI upgrade code is pinned in `tauri.conf.json` to the value used before the
+rename (`1f677b65-1e60-57c5-adbe-3f670e65a5b2`), so Windows treats a new build as
+an upgrade of the same app rather than a second copy.
+
+## Branding and identity
+
+The app, installers and Start menu entry are **Meridian** (`productName` in
+`tauri.conf.json`), with the identifier `com.meridian.app`.
+
+Version 0.7.0 changed both from `World Clock` / `com.worldclock.app`. The migration has
+two parts:
+
+- `src-tauri/installer.nsh` runs before the NSIS install: it copies the WebView2
+  localStorage profile from `%LOCALAPPDATA%\com.worldclock.app` to
+  `%LOCALAPPDATA%\com.meridian.app`, preserves the autostart opt-out marker, and
+  silently removes the old `World Clock` install. The old profile is left in place as a
+  rollback copy.
+- `src-tauri/src/lib.rs` runs the same localStorage/marker migration before creating the
+  main window. This covers MSI installs and any path where the NSIS hook was skipped.
+
+Do not change the identifier or the `world-clock:*` localStorage keys again without an
+equivalent migration: the identifier owns the WebView2 data directory, so a plain rename
+would hide every saved zone, meeting and setting.
 
 ## In-app updates
 
@@ -116,7 +144,7 @@ $env:TAURI_SIGNING_PRIVATE_KEY_PASSWORD = (Get-Content "$env:USERPROFILE\.tauri\
 npm run tauri build
 ```
 
-This produces `World Clock_<version>_x64-setup.exe` plus a matching `.sig` next to it.
+This produces `Meridian_<version>_x64-setup.exe` plus a matching `.sig` next to it.
 
 ### Notes
 

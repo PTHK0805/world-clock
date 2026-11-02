@@ -61,7 +61,7 @@ export function NotificationCard({ title, body, sound, link }: NotificationCardP
         type="button"
         className="notify__main"
         onClick={activate}
-        title={provider && safeLink ? `Join ${provider.name}` : "Open World Clock"}
+        title={provider && safeLink ? `Join ${provider.name}` : "Open Meridian"}
       >
         {provider ? (
           <ProviderIcon provider={provider} link={safeLink} size={13} withName={false} />

@@ -41,7 +41,7 @@ export function TitleBar({
   return (
     <header className="titlebar" data-tauri-drag-region>
       <span className="titlebar__label" data-tauri-drag-region>
-        World Clock
+        Meridian
       </span>
       <div className="titlebar__actions">
         <button

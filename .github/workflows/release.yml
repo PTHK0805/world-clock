@@ -39,7 +39,7 @@ jobs:
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
         with:
           tagName: v__VERSION__
-          releaseName: "World Clock v__VERSION__"
+          releaseName: "Meridian v__VERSION__"
           releaseBody: "Install the setup .exe from the assets below. Existing installs will pick this up automatically from the app's About screen."
           releaseDraft: false
           prerelease: false

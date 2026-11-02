@@ -1,6 +1,7 @@
 use std::{
     collections::HashSet,
     fs,
+    path::Path,
     sync::Mutex,
     time::{Duration, SystemTime, UNIX_EPOCH},
 };
@@ -61,6 +62,62 @@ fn now_ms() -> i64 {
         .duration_since(UNIX_EPOCH)
         .map(|elapsed| elapsed.as_millis() as i64)
         .unwrap_or(0)
+}
+
+fn copy_dir_without_locks(from: &Path, to: &Path) -> std::io::Result<()> {
+    fs::create_dir_all(to)?;
+    for entry in fs::read_dir(from)? {
+        let entry = entry?;
+        if entry.file_name().to_string_lossy() == "LOCK" {
+            continue;
+        }
+        let target = to.join(entry.file_name());
+        let file_type = entry.file_type()?;
+        if file_type.is_dir() {
+            copy_dir_without_locks(&entry.path(), &target)?;
+        } else if file_type.is_file() {
+            fs::copy(entry.path(), target)?;
+        }
+    }
+    Ok(())
+}
+
+/// Moves the pre-rename WebView2 localStorage (and the autostart opt-out
+/// marker) into the Meridian app-data folder. This runs before the main window
+/// exists, so the profile files are not locked. The NSIS installer normally
+/// does this already; the fallback covers MSI installs and manual upgrades.
+fn migrate_legacy_profile(app: &AppHandle) {
+    let Ok(local) = app.path().app_local_data_dir() else {
+        return;
+    };
+    let Some(parent) = local.parent() else {
+        return;
+    };
+    let old_storage = parent
+        .join("com.worldclock.app")
+        .join("EBWebView")
+        .join("Default")
+        .join("Local Storage");
+    let new_storage = local
+        .join("EBWebView")
+        .join("Default")
+        .join("Local Storage");
+    if !new_storage.join("leveldb").join("CURRENT").exists()
+        && old_storage.join("leveldb").join("CURRENT").exists()
+    {
+        let _ = copy_dir_without_locks(&old_storage, &new_storage);
+    }
+
+    if let Ok(config) = app.path().app_config_dir() {
+        if let Some(parent) = config.parent() {
+            let old_marker = parent.join("com.worldclock.app").join(AUTOSTART_OPTOUT);
+            let new_marker = config.join(AUTOSTART_OPTOUT);
+            if old_marker.exists() && !new_marker.exists() {
+                let _ = fs::create_dir_all(&config);
+                let _ = fs::copy(old_marker, new_marker);
+            }
+        }
+    }
 }
 
 fn optout_path(app: &AppHandle) -> Option<std::path::PathBuf> {
@@ -232,6 +289,20 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![sync_reminders, focus_main])
         .setup(|app| {
             let handle = app.handle().clone();
+            migrate_legacy_profile(&handle);
+
+            // The main window is created here, after the profile migration, so
+            // WebView2 cannot lock the old data before it has been copied.
+            let main_config = app
+                .config()
+                .app
+                .windows
+                .iter()
+                .find(|window| window.label == "main")
+                .cloned();
+            if let Some(config) = main_config {
+                WebviewWindowBuilder::from_config(app.handle(), &config)?.build()?;
+            }
 
             // Enabled on first run; a marker file keeps an explicit "off" from the tray.
             let opted_out = optout_path(&handle).map(|path| path.exists()).unwrap_or(false);
@@ -250,7 +321,7 @@ pub fn run() {
 
             let autostart_for_menu = autostart_item.clone();
             let tray = TrayIconBuilder::with_id("main")
-                .tooltip("World Clock")
+                .tooltip("Meridian")
                 .menu(&menu)
                 .show_menu_on_left_click(false)
                 .on_menu_event(move |app, event| match event.id().as_ref() {

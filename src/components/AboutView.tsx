@@ -54,7 +54,7 @@ export function AboutView({ onClose, onShowTour, updater }: AboutViewProps) {
 
       <div className="about__body">
         <div className="about__title">
-          <span className="about__app">World Clock</span>
+          <span className="about__app">Meridian</span>
           {appVersion && <span className="about__version">v{appVersion}</span>}
         </div>
 

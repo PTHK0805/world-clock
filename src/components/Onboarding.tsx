@@ -9,7 +9,7 @@ interface TourStep {
 
 const STEPS: TourStep[] = [
   {
-    title: "Welcome to World Clock",
+    title: "Welcome to Meridian",
     body: "A quick tour of the controls. Drag anywhere on the bar to move the widget — settings save themselves.",
   },
   {
